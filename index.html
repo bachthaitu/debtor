@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FAFAF9" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#0C0A09" media="(prefers-color-scheme:dark)">
+<meta name="description" content="Debtor — Quản lý cho vay, đi vay, thu nợ trực quan.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Debtor">
+<title>Debtor — Quản lý nợ</title>
+
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ SIDEBAR (desktop) ============ -->
+  <aside class="sidebar">
+    <a href="#/dashboard" class="brand">
+      <span class="brand-mark">D</span>
+      <span class="brand-name">Debtor</span>
+    </a>
+
+    <nav class="nav" id="sidebarNav"></nav>
+
+    <div class="sidebar-foot">
+      <button class="nav-item" data-action="theme-toggle" type="button">
+        <span class="nav-icon" data-icon="theme"></span>
+        <span class="nav-label" data-theme-label>Giao diện sáng</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn mobile-only" id="backBtn" data-action="back" type="button" hidden></button>
+        <h1 class="page-title" id="pageTitle">Tổng quan</h1>
+      </div>
+      <div class="topbar-right" id="topbarActions"></div>
+    </header>
+
+    <div class="view" id="view"></div>
+  </main>
+
+  <!-- ============ TABBAR (mobile) ============ -->
+  <nav class="tabbar" id="tabbar"></nav>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" aria-label="Thêm giao dịch" type="button">
+    <span data-icon="plus"></span>
+  </button>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+<div class="modal-root" id="modalRoot"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
