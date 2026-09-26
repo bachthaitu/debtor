@@ -1,29 +1,29 @@
 /* =========================================================
-   Debtor — app.js
+   Debtor — Quản lý cho vay lãi suất tháng
    ========================================================= */
 'use strict';
 
-/* ============ CONSTANTS ============ */
-const DB_KEY = 'debtor-db-v1';
-const THEME_KEY = 'debtor-theme-v1';
+const DB_KEY = 'debtor-db-v2';
+const THEME_KEY = 'debtor-theme-v2';
+const DAYS_PER_MONTH = 30;
 
+/* 3 loại giao dịch chính */
 const TYPES = {
-  lend:    { label: 'Cho vay',  icon: 'arrowUpRight',   tone: 'lend',    sign: +1, dir: 'out' },
-  collect: { label: 'Thu nợ',   icon: 'arrowDownLeft',  tone: 'collect', sign: -1, dir: 'in'  },
-  borrow:  { label: 'Đi vay',   icon: 'arrowDownLeft',  tone: 'borrow',  sign: -1, dir: 'in'  },
-  repay:   { label: 'Trả nợ',   icon: 'arrowUpRight',   tone: 'repay',   sign: +1, dir: 'out' },
+  lend:      { label: 'Cho vay',  icon: 'arrowUpRight',  tone: 'lend',      dir: 'out' },
+  interest:  { label: 'Thu lãi',  icon: 'percent',       tone: 'interest',  dir: 'in'  },
+  principal: { label: 'Thu gốc',  icon: 'arrowDownLeft', tone: 'principal', dir: 'in'  },
 };
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Tổng quan', icon: 'home' },
-  { id: 'contacts',  label: 'Người',     icon: 'users' },
+  { id: 'contacts',  label: 'Người vay', icon: 'users' },
   { id: 'activity',  label: 'Hoạt động', icon: 'activity' },
   { id: 'settings',  label: 'Cài đặt',   icon: 'settings' },
 ];
 
 const PAGE_TITLES = {
   dashboard: 'Tổng quan',
-  contacts:  'Danh bạ',
+  contacts:  'Người vay',
   activity:  'Hoạt động',
   settings:  'Cài đặt',
 };
@@ -31,9 +31,8 @@ const PAGE_TITLES = {
 /* ============ STATE ============ */
 let db = { contacts: [], transactions: [] };
 let currentRoute = { page: 'dashboard', id: null };
-let toastTimer = null;
 
-/* ============ ICONS (Lucide, stroke-based) ============ */
+/* ============ ICONS ============ */
 const ICONS = {
   home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -50,18 +49,16 @@ const ICONS = {
   moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   arrowUpRight: '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
   arrowDownLeft: '<path d="M17 7 7 17"/><path d="M17 17H7V7"/>',
+  percent: '<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
   trendingUp: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
-  trendingDown: '<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',
-  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
   chevronRight: '<path d="m9 18 6-6-6-6"/>',
   chevronLeft: '<path d="m15 18-6-6 6-6"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
-  filter: '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
   wallet: '<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
   sparkle: '<path d="m12 3 1.9 5.8L20 10.5l-5.1 1.7L13 18l-1.9-5.8L6 10.5l5.1-1.7z"/>',
-  user: '<circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/>',
-  key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
 };
 
 function icon(name, size = 20) {
@@ -75,7 +72,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 const nf = new Intl.NumberFormat('vi-VN');
 const money = n => nf.format(Math.round(Number(n) || 0)) + ' ₫';
-const moneySigned = n => (n > 0 ? '+' : '') + money(n);
+const moneySigned = n => (n > 0 ? '+' : n < 0 ? '−' : '') + money(Math.abs(n));
 
 const escapeHtml = s => {
   const d = document.createElement('div');
@@ -88,10 +85,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const initials = name => {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
-  return (parts.length === 1
-    ? parts[0][0]
-    : parts[0][0] + parts[parts.length - 1][0]
-  ).toUpperCase();
+  return (parts.length === 1 ? parts[0][0] : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
 function hashStr(s) {
@@ -102,7 +96,8 @@ function hashStr(s) {
 
 function avatarColor(name) {
   const hue = hashStr(name) % 360;
-  return `linear-gradient(135deg, hsl(${hue} 55% 58%), hsl(${(hue + 30) % 360} 60% 48%))`;
+  // Warm palette — keep saturation moderate to fit Claude tone
+  return `linear-gradient(135deg, hsl(${hue} 45% 58%), hsl(${(hue + 30) % 360} 50% 46%))`;
 }
 
 const todayISO = () => {
@@ -118,7 +113,7 @@ const formatDate = iso => {
 
 const relativeDate = iso => {
   if (!iso) return '';
-  const t = new Date(); t.setHours(0,0,0,0);
+  const t = new Date(); t.setHours(0, 0, 0, 0);
   const d = new Date(iso + 'T00:00:00');
   const days = Math.round((t - d) / 86400000);
   if (days === 0) return 'Hôm nay';
@@ -126,6 +121,27 @@ const relativeDate = iso => {
   if (days < 7) return `${days} ngày trước`;
   return formatDate(iso);
 };
+
+const daysBetween = (fromISO, toISO) => {
+  const a = new Date(fromISO + 'T00:00:00');
+  const b = new Date(toISO + 'T00:00:00');
+  return Math.max(0, Math.floor((b - a) / 86400000));
+};
+
+/* ============ INTEREST CALCULATION ============ */
+/**
+ * Lãi tích lũy của một khoản cho vay.
+ * rate: %/tháng. days/30 để quy ra số tháng.
+ *   interest = principal × (rate/100) × (days / 30)
+ */
+function lendInterest(lend) {
+  const days = daysBetween(lend.date, todayISO());
+  return lend.amount * (lend.rate / 100) * (days / DAYS_PER_MONTH);
+}
+
+function lendTotalDue(lend) {
+  return lend.amount + lendInterest(lend);
+}
 
 /* ============ STORAGE ============ */
 function load() {
@@ -135,17 +151,12 @@ function load() {
     const data = JSON.parse(raw);
     db.contacts = Array.isArray(data.contacts) ? data.contacts : [];
     db.transactions = Array.isArray(data.transactions) ? data.transactions : [];
-  } catch (err) {
-    console.error('Load failed', err);
-  }
+  } catch (e) { console.error(e); }
 }
 
 function save() {
-  try {
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
-  } catch (err) {
-    toast('Không lưu được dữ liệu', 'error');
-  }
+  try { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+  catch (_) { toast('Không lưu được dữ liệu', 'error'); }
 }
 
 /* ============ THEME ============ */
@@ -154,7 +165,7 @@ function getStoredTheme() {
 }
 
 function applyTheme(theme) {
-  if (theme === 'system' || !theme) {
+  if (!theme || theme === 'system') {
     const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
     document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light';
   } else {
@@ -162,7 +173,6 @@ function applyTheme(theme) {
   }
   try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
 
-  // Update theme toggle label & icon
   const actual = document.documentElement.dataset.theme;
   $$('[data-theme-label]').forEach(el => {
     el.textContent = actual === 'dark' ? 'Giao diện tối' : 'Giao diện sáng';
@@ -191,28 +201,72 @@ function toast(msg, type = 'info') {
   }, 2200);
 }
 
-/* ============ BALANCE ============ */
-function balanceOf(contactId) {
-  return db.transactions.reduce(
-    (sum, t) => t.contactId === contactId ? sum + TYPES[t.type].sign * t.amount : sum,
-    0
-  );
-}
+/* ============ STATS ============ */
+/**
+ * Thống kê của một người vay:
+ *   - outstandingPrincipal: gốc chưa thu
+ *   - outstandingInterest:  lãi tích lũy chưa thu
+ *   - balance:              tổng còn phải thu
+ */
+function stats(contactId) {
+  const txns = db.transactions.filter(t => t.contactId === contactId);
 
-function totals() {
-  let recv = 0, pay = 0;
-  db.contacts.forEach(c => {
-    const b = balanceOf(c.id);
-    if (b > 0) recv += b;
-    else pay += -b;
+  let totalLent = 0;
+  let totalInterestPaid = 0;
+  let totalPrincipalPaid = 0;
+  let accruedInterest = 0;
+  const lends = [];
+
+  txns.forEach(t => {
+    if (t.type === 'lend') {
+      totalLent += t.amount;
+      accruedInterest += lendInterest(t);
+      lends.push(t);
+    } else if (t.type === 'interest') {
+      totalInterestPaid += t.amount;
+    } else if (t.type === 'principal') {
+      totalPrincipalPaid += t.amount;
+    }
   });
-  return { recv, pay, net: recv - pay };
+
+  const outstandingPrincipal = totalLent - totalPrincipalPaid;
+  const outstandingInterest = accruedInterest - totalInterestPaid;
+  const balance = outstandingPrincipal + outstandingInterest;
+
+  return {
+    lends,
+    totalLent,
+    accruedInterest,
+    totalInterestPaid,
+    totalPrincipalPaid,
+    outstandingPrincipal,
+    outstandingInterest,
+    balance,
+    lendCount: lends.length,
+  };
 }
 
-/* ============ AVATAR HTML ============ */
-function avatarHTML(name, size = 44, extra = '') {
-  const style = `background:${avatarColor(name)};width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px`;
-  return `<div class="tx-avatar" style="${style};${extra}">${escapeHtml(initials(name))}</div>`;
+function globalStats() {
+  let totalOutstanding = 0;
+  let totalPrincipal = 0;
+  let totalInterestOutstanding = 0;
+  let totalCollected = 0;
+
+  db.contacts.forEach(c => {
+    const s = stats(c.id);
+    totalOutstanding += Math.max(0, s.balance);
+    totalPrincipal += Math.max(0, s.outstandingPrincipal);
+    totalInterestOutstanding += Math.max(0, s.outstandingInterest);
+    totalCollected += s.totalInterestPaid + s.totalPrincipalPaid;
+  });
+
+  return {
+    totalOutstanding,
+    totalPrincipal,
+    totalInterestOutstanding,
+    totalCollected,
+    contactCount: db.contacts.length,
+  };
 }
 
 /* ============ NAVIGATION ============ */
@@ -236,12 +290,9 @@ function buildNav() {
 }
 
 function setActiveNav(page) {
-  $$('[data-nav]').forEach(el => {
-    el.classList.toggle('active', el.dataset.nav === page);
-  });
+  $$('[data-nav]').forEach(el => el.classList.toggle('active', el.dataset.nav === page));
 }
 
-/* ============ ROUTER ============ */
 function parseHash() {
   const h = location.hash.replace(/^#\/?/, '');
   const parts = h.split('/').filter(Boolean);
@@ -252,7 +303,6 @@ function navigate() {
   currentRoute = parseHash();
   const { page, id } = currentRoute;
 
-  // Page title
   let title = PAGE_TITLES[page] || 'Debtor';
   if (page === 'contacts' && id) {
     const c = db.contacts.find(x => x.id === id);
@@ -260,7 +310,6 @@ function navigate() {
   }
   $('#pageTitle').textContent = title;
 
-  // Back button (mobile) — show on contact detail
   const backBtn = $('#backBtn');
   if (page === 'contacts' && id) {
     backBtn.hidden = false;
@@ -271,17 +320,13 @@ function navigate() {
 
   setActiveNav(page);
 
-  // Render view
   if (page === 'dashboard') renderDashboard();
   else if (page === 'contacts') id ? renderContactDetail(id) : renderContacts();
   else if (page === 'activity') renderActivity();
   else if (page === 'settings') renderSettings();
   else renderDashboard();
 
-  // Update topbar actions per page
   renderTopbarActions(page, id);
-
-  // Scroll to top
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -290,30 +335,17 @@ function renderTopbarActions(page, id) {
   if (page === 'contacts' && id) {
     box.innerHTML = `
       <button class="icon-btn" data-action="edit-contact" data-id="${id}" title="Sửa">${icon('edit', 18)}</button>
-      <button class="btn primary" data-action="new-tx" data-contact="${id}">
-        ${icon('plus', 16)}<span>Giao dịch</span>
-      </button>
-    `;
+      <button class="btn accent" data-action="new-tx" data-contact="${id}">
+        ${icon('plus', 16)}<span>Khoản vay</span>
+      </button>`;
   } else if (page === 'contacts') {
-    box.innerHTML = `
-      <button class="btn primary" data-action="new-contact">
-        ${icon('plus', 16)}<span>Người</span>
-      </button>
-    `;
+    box.innerHTML = `<button class="btn accent" data-action="new-contact">${icon('plus', 16)}<span>Người vay</span></button>`;
   } else if (page === 'activity') {
-    box.innerHTML = `
-      <button class="btn primary" data-action="new-tx">
-        ${icon('plus', 16)}<span>Giao dịch</span>
-      </button>
-    `;
+    box.innerHTML = `<button class="btn accent" data-action="new-tx">${icon('plus', 16)}<span>Giao dịch</span></button>`;
   } else if (page === 'settings') {
     box.innerHTML = '';
   } else {
-    box.innerHTML = `
-      <button class="btn primary" data-action="new-tx">
-        ${icon('plus', 16)}<span>Giao dịch</span>
-      </button>
-    `;
+    box.innerHTML = `<button class="btn accent" data-action="new-tx">${icon('plus', 16)}<span>Cho vay</span></button>`;
   }
 }
 
@@ -321,33 +353,34 @@ function renderTopbarActions(page, id) {
    VIEW: DASHBOARD
    ============================================================ */
 function renderDashboard() {
-  const { recv, pay, net } = totals();
-  const netClass = net > 0 ? 'pos' : net < 0 ? 'neg' : '';
+  const g = globalStats();
 
-  // Recent transactions
   const recent = [...db.transactions]
     .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0))
-    .slice(0, 5);
+    .slice(0, 6);
 
-  // Top contacts by |balance|
-  const topContacts = [...db.contacts]
-    .map(c => ({ c, b: balanceOf(c.id) }))
-    .filter(x => x.b !== 0)
-    .sort((a, b) => Math.abs(b.b) - Math.abs(a.b))
+  const topDebtors = [...db.contacts]
+    .map(c => ({ c, s: stats(c.id) }))
+    .filter(x => x.s.balance > 0)
+    .sort((a, b) => b.s.balance - a.s.balance)
     .slice(0, 3);
 
   const html = `
     <section class="hero">
-      <div class="hero-eyebrow">${icon('wallet', 14)} Số dư ròng</div>
-      <div class="hero-net ${netClass}">${net === 0 ? '0 ₫' : moneySigned(net)}</div>
+      <div class="hero-eyebrow">${icon('wallet', 14)} Tổng dư nợ cần thu</div>
+      <div class="hero-net">${money(g.totalOutstanding)}</div>
       <div class="hero-split">
         <div class="hero-split-item">
-          <span class="hero-split-label">${icon('trendingUp', 13)} Họ nợ tôi</span>
-          <span class="hero-split-value pos">${money(recv)}</span>
+          <span class="hero-split-label">${icon('wallet', 13)} Gốc còn lại</span>
+          <span class="hero-split-value text">${money(g.totalPrincipal)}</span>
         </div>
         <div class="hero-split-item">
-          <span class="hero-split-label">${icon('trendingDown', 13)} Tôi nợ họ</span>
-          <span class="hero-split-value neg">${money(pay)}</span>
+          <span class="hero-split-label">${icon('percent', 13)} Lãi tích lũy</span>
+          <span class="hero-split-value amber">${money(g.totalInterestOutstanding)}</span>
+        </div>
+        <div class="hero-split-item">
+          <span class="hero-split-label">${icon('check', 13)} Đã thu</span>
+          <span class="hero-split-value pos">${money(g.totalCollected)}</span>
         </div>
       </div>
     </section>
@@ -358,27 +391,25 @@ function renderDashboard() {
         <h2 class="section-title">Giao dịch gần đây</h2>
         <a href="#/activity" class="section-link">Xem tất cả ${icon('chevronRight', 14)}</a>
       </div>
-      <div class="card tx-list">
-        ${recent.map(txRowHTML).join('')}
-      </div>
+      <div class="card tx-list">${recent.map(txRowHTML).join('')}</div>
     </section>` : `
     <section class="section">
       <div class="empty">
         <div class="empty-icon">${icon('inbox', 28)}</div>
         <h3 class="empty-title">Chưa có giao dịch nào</h3>
-        <p class="empty-text">Ghi lại khoản cho vay hoặc đi vay đầu tiên để bắt đầu theo dõi.</p>
-        <button class="btn primary" data-action="new-tx">${icon('plus', 16)} Thêm giao dịch</button>
+        <p class="empty-text">Ghi lại khoản cho vay đầu tiên để bắt đầu theo dõi gốc và lãi.</p>
+        <button class="btn accent" data-action="new-tx">${icon('plus', 16)} Cho vay</button>
       </div>
     </section>`}
 
-    ${topContacts.length ? `
+    ${topDebtors.length ? `
     <section class="section">
       <div class="section-head">
-        <h2 class="section-title">Người có số dư lớn nhất</h2>
+        <h2 class="section-title">Người vay nhiều nhất</h2>
         <a href="#/contacts" class="section-link">Tất cả ${icon('chevronRight', 14)}</a>
       </div>
       <div class="grid">
-        ${topContacts.map(({ c, b }) => contactCardHTML(c, b)).join('')}
+        ${topDebtors.map(({ c, s }) => contactCardHTML(c, s)).join('')}
       </div>
     </section>` : ''}
   `;
@@ -400,10 +431,9 @@ function renderContacts() {
     (c.note || '').toLowerCase().includes(q)
   );
 
-  // Sort by |balance| desc, then by name
   list.sort((a, b) => {
-    const ba = Math.abs(balanceOf(a.id));
-    const bb = Math.abs(balanceOf(b.id));
+    const ba = stats(a.id).balance;
+    const bb = stats(b.id).balance;
     if (bb !== ba) return bb - ba;
     return (a.name || '').localeCompare(b.name || '', 'vi');
   });
@@ -418,9 +448,9 @@ function renderContacts() {
     ${!db.contacts.length ? `
       <div class="empty">
         <div class="empty-icon">${icon('users', 28)}</div>
-        <h3 class="empty-title">Chưa có ai trong danh bạ</h3>
-        <p class="empty-text">Thêm người đầu tiên để bắt đầu ghi lại các khoản nợ.</p>
-        <button class="btn primary" data-action="new-contact">${icon('plus', 16)} Thêm người</button>
+        <h3 class="empty-title">Chưa có người vay nào</h3>
+        <p class="empty-text">Thêm người vay đầu tiên để bắt đầu quản lý gốc và lãi.</p>
+        <button class="btn accent" data-action="new-contact">${icon('plus', 16)} Thêm người vay</button>
       </div>
     ` : !list.length ? `
       <div class="empty">
@@ -430,19 +460,17 @@ function renderContacts() {
       </div>
     ` : `
       <div class="grid">
-        ${list.map(c => contactCardHTML(c, balanceOf(c.id))).join('')}
+        ${list.map(c => contactCardHTML(c, stats(c.id))).join('')}
       </div>
     `}
   `;
 
   $('#view').innerHTML = html;
 
-  // Bind search
   const inp = $('#contactSearch');
   if (inp) {
     inp.addEventListener('input', e => {
       window.__search = e.target.value;
-      // Preserve focus & caret
       const pos = e.target.selectionStart;
       renderContacts();
       const newInp = $('#contactSearch');
@@ -452,23 +480,25 @@ function renderContacts() {
       }
     });
   }
-
   bindViewEvents();
 }
 
-function contactCardHTML(c, b) {
-  const cls = b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero';
-  const label = b > 0 ? 'Họ nợ bạn' : b < 0 ? 'Bạn nợ họ' : 'Sạch nợ';
-  const sub = [c.phone, c.note].filter(Boolean).map(escapeHtml).join(' · ') || 'Không có ghi chú';
+function contactCardHTML(c, s) {
+  const bal = s.balance;
+  const cls = bal > 0 ? '' : 'zero';
+  const label = bal > 0 ? 'Còn nợ' : 'Sạch nợ';
+  const sub = [c.phone, c.note].filter(Boolean).map(escapeHtml).join(' · ')
+    || (s.lendCount ? `${s.lendCount} khoản vay` : 'Không có ghi chú');
+
   return `
     <article class="contact-card" data-contact-id="${c.id}">
-      ${avatarHTML(c.name, 44)}
+      <div class="contact-avatar" style="background:${avatarColor(c.name)}">${escapeHtml(initials(c.name))}</div>
       <div class="contact-body">
         <div class="contact-name">${escapeHtml(c.name)}</div>
         <div class="contact-sub">${sub}</div>
       </div>
       <div class="contact-balance">
-        <span class="contact-balance-amount ${cls}">${b === 0 ? '0 ₫' : moneySigned(b)}</span>
+        <span class="contact-balance-amount ${cls}">${bal > 0 ? money(bal) : '0 ₫'}</span>
         <span class="contact-balance-label">${label}</span>
       </div>
     </article>
@@ -480,24 +510,21 @@ function contactCardHTML(c, b) {
    ============================================================ */
 function renderContactDetail(id) {
   const c = db.contacts.find(x => x.id === id);
-  if (!c) {
-    location.hash = '#/contacts';
-    return;
-  }
+  if (!c) { location.hash = '#/contacts'; return; }
 
-  const b = balanceOf(id);
-  const cls = b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero';
-  const label = b > 0 ? 'Họ nợ bạn' : b < 0 ? 'Bạn nợ họ' : 'Sạch nợ';
+  const s = stats(id);
+  const sub = [c.phone, c.email, c.note].filter(Boolean).map(escapeHtml).join(' · ')
+    || 'Không có thông tin thêm';
 
-  const txs = db.transactions
+  const allTxns = db.transactions
     .filter(t => t.contactId === id)
     .sort((x, y) => (y.date || '').localeCompare(x.date || '') || (y.createdAt || 0) - (x.createdAt || 0));
 
-  const sub = [c.phone, c.email, c.note].filter(Boolean).map(escapeHtml).join(' · ') || 'Không có thông tin thêm';
+  const loans = s.lends.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   const html = `
     <div class="detail-head">
-      ${avatarHTML(c.name, 64, 'border-radius:20px;font-size:22px;')}
+      <div class="detail-avatar" style="background:${avatarColor(c.name)}">${escapeHtml(initials(c.name))}</div>
       <div class="detail-info">
         <h2 class="detail-name">${escapeHtml(c.name)}</h2>
         <p class="detail-sub">${sub}</p>
@@ -505,34 +532,49 @@ function renderContactDetail(id) {
     </div>
 
     <div class="detail-balance">
-      <div class="detail-balance-label">${label}</div>
-      <div class="detail-balance-amount ${cls}">${b === 0 ? '0 ₫' : moneySigned(b)}</div>
+      <div class="detail-balance-label">Tổng còn phải thu</div>
+      <div class="detail-balance-amount ${s.balance <= 0 ? 'zero' : ''}">${money(Math.max(0, s.balance))}</div>
+      <div class="detail-sub-nums">
+        <div>
+          <div class="detail-sub-num-label">Gốc còn lại</div>
+          <div class="detail-sub-num-value">${money(Math.max(0, s.outstandingPrincipal))}</div>
+        </div>
+        <div>
+          <div class="detail-sub-num-label">Lãi tích lũy chưa thu</div>
+          <div class="detail-sub-num-value" style="color:var(--amber)">${money(Math.max(0, s.outstandingInterest))}</div>
+        </div>
+      </div>
     </div>
 
     <div class="detail-actions">
-      <button class="btn primary" data-action="new-tx" data-contact="${id}">
-        ${icon('plus', 16)} Thêm giao dịch
-      </button>
-      <button class="btn ghost" data-action="edit-contact" data-id="${id}">
-        ${icon('edit', 16)} Sửa
-      </button>
-      <button class="btn soft-danger" data-action="delete-contact" data-id="${id}">
-        ${icon('trash', 16)} Xoá
-      </button>
+      <button class="btn accent" data-action="new-tx" data-contact="${id}">${icon('plus', 16)} Cho vay</button>
+      <button class="btn ghost" data-action="collect-interest" data-contact="${id}">${icon('percent', 16)} Thu lãi</button>
+      <button class="btn ghost" data-action="collect-principal" data-contact="${id}">${icon('arrowDownLeft', 16)} Thu gốc</button>
+      <button class="btn soft-danger" data-action="delete-contact" data-id="${id}">${icon('trash', 16)} Xoá</button>
     </div>
 
     <section class="section">
       <div class="section-head">
-        <h2 class="section-title">Lịch sử (${txs.length})</h2>
+        <h2 class="section-title">Các khoản cho vay (${loans.length})</h2>
       </div>
-      ${txs.length ? `
-        <div class="card tx-list">
-          ${txs.map(txRowHTML).join('')}
+      ${loans.length ? loans.map(lendCardHTML).join('') : `
+        <div class="empty" style="padding:36px 20px">
+          <div class="empty-icon">${icon('inbox', 24)}</div>
+          <p class="empty-text" style="margin:0">Chưa có khoản cho vay nào.</p>
         </div>
+      `}
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Lịch sử (${allTxns.length})</h2>
+      </div>
+      ${allTxns.length ? `
+        <div class="card tx-list">${allTxns.map(txRowHTML).join('')}</div>
       ` : `
         <div class="empty" style="padding:36px 20px">
           <div class="empty-icon">${icon('inbox', 24)}</div>
-          <p class="empty-text" style="margin:0">Chưa có giao dịch nào với người này.</p>
+          <p class="empty-text" style="margin:0">Chưa có giao dịch nào.</p>
         </div>
       `}
     </section>
@@ -540,6 +582,51 @@ function renderContactDetail(id) {
 
   $('#view').innerHTML = html;
   bindViewEvents();
+}
+
+function lendCardHTML(lend) {
+  const interest = lendInterest(lend);
+  const total = lend.amount + interest;
+  const days = daysBetween(lend.date, todayISO());
+
+  const dueLine = lend.dueDate
+    ? `<span>·</span><span>Hạn trả ${formatDate(lend.dueDate)}</span>`
+    : '';
+
+  return `
+    <article class="loan-card">
+      <div class="loan-head">
+        <div style="min-width:0">
+          <div class="loan-amount">${money(lend.amount)}</div>
+          <div class="loan-meta">
+            <span class="loan-rate-badge">${icon('percent', 11)} ${lend.rate}%/tháng</span>
+            <span>·</span>
+            <span>${formatDate(lend.date)}</span>
+            <span>·</span>
+            <span>${days} ngày</span>
+            ${dueLine}
+          </div>
+        </div>
+        <div class="loan-actions">
+          <button class="icon-btn sm" data-tx-edit="${lend.id}" title="Sửa">${icon('edit', 15)}</button>
+          <button class="icon-btn sm danger" data-tx-del="${lend.id}" title="Xoá">${icon('trash', 15)}</button>
+        </div>
+      </div>
+
+      ${lend.note ? `<p style="font-size:13px;color:var(--text-2);margin-bottom:12px;line-height:1.5;word-break:break-word">${escapeHtml(lend.note)}</p>` : ''}
+
+      <div class="loan-nums">
+        <div>
+          <div class="loan-num-label">Lãi tích lũy</div>
+          <div class="loan-num-value amber">${money(interest)}</div>
+        </div>
+        <div>
+          <div class="loan-num-label">Tổng phải thu</div>
+          <div class="loan-num-value accent">${money(total)}</div>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 /* ============================================================
@@ -550,20 +637,17 @@ function renderActivity() {
   const filter = window.__filter || 'all';
 
   let list = db.transactions.slice();
-
   if (filter !== 'all') list = list.filter(t => t.type === filter);
 
   if (q) {
     list = list.filter(t => {
       const c = db.contacts.find(x => x.id === t.contactId);
-      return (c?.name || '').toLowerCase().includes(q) ||
-             (t.note || '').toLowerCase().includes(q);
+      return (c?.name || '').toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q);
     });
   }
 
   list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
 
-  // Group by date
   const groups = new Map();
   list.forEach(t => {
     const d = t.date || '';
@@ -580,9 +664,8 @@ function renderActivity() {
       <select class="select" id="activityFilter">
         <option value="all"${filter === 'all' ? ' selected' : ''}>Tất cả loại</option>
         <option value="lend"${filter === 'lend' ? ' selected' : ''}>Cho vay</option>
-        <option value="collect"${filter === 'collect' ? ' selected' : ''}>Thu nợ</option>
-        <option value="borrow"${filter === 'borrow' ? ' selected' : ''}>Đi vay</option>
-        <option value="repay"${filter === 'repay' ? ' selected' : ''}>Trả nợ</option>
+        <option value="interest"${filter === 'interest' ? ' selected' : ''}>Thu lãi</option>
+        <option value="principal"${filter === 'principal' ? ' selected' : ''}>Thu gốc</option>
       </select>
     </div>
 
@@ -591,7 +674,7 @@ function renderActivity() {
         <div class="empty-icon">${icon('activity', 28)}</div>
         <h3 class="empty-title">Không có giao dịch</h3>
         <p class="empty-text">${db.transactions.length ? 'Thử đổi bộ lọc hoặc từ khoá.' : 'Ghi lại giao dịch đầu tiên để bắt đầu.'}</p>
-        ${!db.transactions.length ? `<button class="btn primary" data-action="new-tx">${icon('plus', 16)} Thêm giao dịch</button>` : ''}
+        ${!db.transactions.length ? `<button class="btn accent" data-action="new-tx">${icon('plus', 16)} Cho vay</button>` : ''}
       </div>
     ` : [...groups.entries()].map(([date, items]) => `
       <section class="section" style="margin-bottom:22px">
@@ -599,9 +682,7 @@ function renderActivity() {
           <h2 class="section-title">${relativeDate(date)}</h2>
           <span style="font-size:12.5px;color:var(--text-3)">${items.length} giao dịch</span>
         </div>
-        <div class="card tx-list">
-          ${items.map(txRowHTML).join('')}
-        </div>
+        <div class="card tx-list">${items.map(txRowHTML).join('')}</div>
       </section>
     `).join('')}
   `;
@@ -615,19 +696,11 @@ function renderActivity() {
       const pos = e.target.selectionStart;
       renderActivity();
       const newInp = $('#activitySearch');
-      if (newInp) {
-        newInp.focus();
-        try { newInp.setSelectionRange(pos, pos); } catch (_) {}
-      }
+      if (newInp) { newInp.focus(); try { newInp.setSelectionRange(pos, pos); } catch (_) {} }
     });
   }
   const sel = $('#activityFilter');
-  if (sel) {
-    sel.addEventListener('change', e => {
-      window.__filter = e.target.value;
-      renderActivity();
-    });
-  }
+  if (sel) sel.addEventListener('change', e => { window.__filter = e.target.value; renderActivity(); });
 
   bindViewEvents();
 }
@@ -639,19 +712,24 @@ function txRowHTML(t) {
   const c = db.contacts.find(x => x.id === t.contactId);
   const T = TYPES[t.type] || TYPES.lend;
   const name = c ? c.name : 'Không rõ';
-  const noteTxt = t.note ? escapeHtml(t.note) : T.label;
+
+  const meta = t.type === 'lend'
+    ? `${T.label} · ${t.rate}%/tháng · ${formatDate(t.date)}`
+    : `${T.label} · ${formatDate(t.date)}`;
+
+  const amountSign = t.type === 'lend' ? '−' : '+';
+  const amountCls = t.type === 'lend' ? 'neg' : 'pos';
+
+  const iconHTML = `<div class="tx-icon ${T.tone}">${icon(T.icon, 18)}</div>`;
 
   return `
     <div class="tx-row" data-tx-id="${t.id}">
-      ${avatarHTML(name, 40, `position:relative;`).replace(
-        '</div>',
-        `<span class="tx-avatar-badge ${T.tone}">${icon(T.icon, 11)}</span></div>`
-      )}
+      ${iconHTML}
       <div class="tx-body">
         <div class="tx-name">${escapeHtml(name)}</div>
-        <div class="tx-meta">${T.label}${t.note ? ' · ' + escapeHtml(t.note) : ''} · ${formatDate(t.date)}</div>
+        <div class="tx-meta">${meta}${t.note ? ' · ' + escapeHtml(t.note) : ''}</div>
       </div>
-      <div class="tx-amount ${T.dir === 'in' ? 'pos' : 'neg'}">${T.dir === 'in' ? '+' : '−'}${money(t.amount)}</div>
+      <div class="tx-amount ${amountCls}">${amountSign}${money(t.amount)}</div>
       <div class="tx-actions">
         <button class="icon-btn sm" data-tx-edit="${t.id}" title="Sửa">${icon('edit', 15)}</button>
         <button class="icon-btn sm danger" data-tx-del="${t.id}" title="Xoá">${icon('trash', 15)}</button>
@@ -685,7 +763,7 @@ function renderSettings() {
         <span class="settings-item-icon accent">${icon('download', 19)}</span>
         <div class="settings-item-body">
           <div class="settings-item-title">Sao lưu (JSON)</div>
-          <div class="settings-item-desc">Tải toàn bộ danh bạ và giao dịch về máy</div>
+          <div class="settings-item-desc">Tải toàn bộ dữ liệu về máy để dự phòng</div>
         </div>
         ${icon('chevronRight', 18)}
       </button>
@@ -702,7 +780,7 @@ function renderSettings() {
         <span class="settings-item-icon">${icon('download', 19)}</span>
         <div class="settings-item-body">
           <div class="settings-item-title">Xuất CSV</div>
-          <div class="settings-item-desc">Xuất danh sách giao dịch ra Excel / Google Sheets</div>
+          <div class="settings-item-desc">Mở bằng Excel / Google Sheets</div>
         </div>
         ${icon('chevronRight', 18)}
       </button>
@@ -714,7 +792,7 @@ function renderSettings() {
         <span class="settings-item-icon danger">${icon('trash', 19)}</span>
         <div class="settings-item-body">
           <div class="settings-item-title" style="color:var(--red)">Xoá toàn bộ dữ liệu</div>
-          <div class="settings-item-desc">Xoá hết danh bạ và giao dịch (không thể hoàn tác)</div>
+          <div class="settings-item-desc">Xoá hết người vay và giao dịch (không hoàn tác)</div>
         </div>
       </button>
     </div>
@@ -722,16 +800,10 @@ function renderSettings() {
     <div class="settings-group">
       <h3 class="settings-group-title">Về ứng dụng</h3>
       <div class="card" style="padding:18px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-          <span class="brand-mark" style="width:36px;height:36px;font-size:20px">D</span>
-          <div>
-            <div style="font-weight:700;font-size:15px">Debtor</div>
-            <div style="font-size:12.5px;color:var(--text-2)">v1.0 · Chạy hoàn toàn trên trình duyệt</div>
-          </div>
-        </div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:22px;font-weight:500;margin-bottom:10px">Debtor</div>
         <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin:0">
-          Dữ liệu được lưu trong <b>localStorage</b> của trình duyệt bạn đang dùng.
-          Hãy sao lưu định kỳ để tránh mất dữ liệu khi xoá cache hoặc đổi thiết bị.
+          Lãi được tính theo công thức <b>gốc × lãi suất/tháng × số ngày / 30</b>.<br>
+          Dữ liệu lưu trong <b>localStorage</b> của trình duyệt này. Hãy sao lưu định kỳ bằng nút <b>Sao lưu</b> ở trên.
         </p>
       </div>
     </div>
@@ -742,19 +814,17 @@ function renderSettings() {
 }
 
 /* ============================================================
-   EVENT BINDING (view-level)
+   EVENT BINDING
    ============================================================ */
 function bindViewEvents() {
   const view = $('#view');
 
-  // Contact card click
   $$('[data-contact-id]', view).forEach(el => {
     el.addEventListener('click', () => {
       location.hash = `#/contacts/${el.dataset.contactId}`;
     });
   });
 
-  // Tx row click (edit)
   $$('[data-tx-id]', view).forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('[data-tx-edit]') || e.target.closest('[data-tx-del]')) return;
@@ -762,7 +832,6 @@ function bindViewEvents() {
     });
   });
 
-  // Tx edit buttons
   $$('[data-tx-edit]', view).forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -770,7 +839,6 @@ function bindViewEvents() {
     });
   });
 
-  // Tx delete buttons
   $$('[data-tx-del]', view).forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -778,27 +846,21 @@ function bindViewEvents() {
     });
   });
 
-  // Theme segment
-  $$('#themeSeg [data-theme-val]').forEach(btn => {
+  $$('#themeSeg [data-theme-val]', view).forEach(btn => {
     btn.addEventListener('click', () => {
       applyTheme(btn.dataset.themeVal);
       renderSettings();
     });
   });
 
-  // Import file
   const imp = $('#importFile');
   if (imp) imp.addEventListener('change', handleImportFile);
 
-  // Global actions inside view
   $$('[data-action]', view).forEach(el => {
     el.addEventListener('click', handleAction);
   });
 }
 
-/* ============================================================
-   ACTION HANDLER
-   ============================================================ */
 function handleAction(e) {
   const el = e.currentTarget;
   const action = el.dataset.action;
@@ -806,22 +868,24 @@ function handleAction(e) {
   const contactId = el.dataset.contact;
 
   switch (action) {
-    case 'new-tx':      openTxForm({ contactId }); break;
-    case 'edit-contact':openContactForm(id); break;
-    case 'delete-contact': confirmDeleteContact(id); break;
-    case 'new-contact': openContactForm(); break;
-    case 'theme-toggle': toggleTheme(); break;
-    case 'back':        history.back(); break;
-    case 'export-json': exportJSON(); break;
-    case 'export-csv':  exportCSV(); break;
-    case 'clear-all':   confirmClearAll(); break;
+    case 'new-tx':           openTxForm({ contactId, type: 'lend' }); break;
+    case 'collect-interest': openTxForm({ contactId, type: 'interest' }); break;
+    case 'collect-principal':openTxForm({ contactId, type: 'principal' }); break;
+    case 'edit-contact':     openContactForm(id); break;
+    case 'delete-contact':   confirmDeleteContact(id); break;
+    case 'new-contact':      openContactForm(); break;
+    case 'theme-toggle':     toggleTheme(); break;
+    case 'back':             history.back(); break;
+    case 'export-json':      exportJSON(); break;
+    case 'export-csv':       exportCSV(); break;
+    case 'clear-all':        confirmClearAll(); break;
   }
 }
 
 /* ============================================================
    MODAL SYSTEM
    ============================================================ */
-function openModal(html, opts = {}) {
+function openModal(html) {
   const root = $('#modalRoot');
   root.innerHTML = `
     <div class="modal-backdrop" id="modalBackdrop">
@@ -837,10 +901,8 @@ function openModal(html, opts = {}) {
     if (e.target.id === 'modalBackdrop') closeModal();
   });
 
-  // Bind close buttons
   $$('[data-close]', root).forEach(el => el.addEventListener('click', closeModal));
 
-  // Autofocus first input (desktop only)
   if (window.innerWidth > 640) {
     setTimeout(() => {
       const first = root.querySelector('input:not([type=hidden]), select, textarea');
@@ -850,8 +912,7 @@ function openModal(html, opts = {}) {
 }
 
 function closeModal() {
-  const root = $('#modalRoot');
-  root.innerHTML = '';
+  $('#modalRoot').innerHTML = '';
   document.body.style.overflow = '';
 }
 
@@ -860,7 +921,7 @@ function closeModal() {
    ============================================================ */
 function openContactForm(id = null) {
   const c = id ? db.contacts.find(x => x.id === id) : null;
-  const title = c ? 'Sửa người' : 'Thêm người';
+  const title = c ? 'Sửa người vay' : 'Thêm người vay';
 
   const html = `
     <div class="modal-head">
@@ -870,7 +931,7 @@ function openContactForm(id = null) {
     <form id="contactForm">
       <div class="modal-body">
         <div class="field">
-          <label class="field-label" for="cName">Tên <span style="color:var(--red)">*</span></label>
+          <label class="field-label" for="cName">Tên <span class="req">*</span></label>
           <input type="text" class="input" id="cName" maxlength="60" placeholder="VD: Nguyễn Văn A" value="${escapeHtml(c?.name || '')}" required autocomplete="off">
         </div>
         <div class="field">
@@ -878,17 +939,13 @@ function openContactForm(id = null) {
           <input type="tel" class="input" id="cPhone" maxlength="20" placeholder="VD: 0912 345 678" value="${escapeHtml(c?.phone || '')}" autocomplete="off">
         </div>
         <div class="field">
-          <label class="field-label" for="cEmail">Email <span class="opt">(tuỳ chọn)</span></label>
-          <input type="email" class="input" id="cEmail" maxlength="80" placeholder="VD: a@example.com" value="${escapeHtml(c?.email || '')}" autocomplete="off">
-        </div>
-        <div class="field">
           <label class="field-label" for="cNote">Ghi chú <span class="opt">(tuỳ chọn)</span></label>
-          <textarea class="textarea" id="cNote" maxlength="200" placeholder="VD: Bạn học cấp 3, hay vay tiền mặt…">${escapeHtml(c?.note || '')}</textarea>
+          <textarea class="textarea" id="cNote" maxlength="200" placeholder="VD: Bạn giới thiệu, hay vay gấp…">${escapeHtml(c?.note || '')}</textarea>
         </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn ghost" data-close>Huỷ</button>
-        <button type="submit" class="btn primary">${c ? 'Lưu thay đổi' : 'Thêm'}</button>
+        <button type="submit" class="btn accent">${c ? 'Lưu thay đổi' : 'Thêm'}</button>
       </div>
     </form>
   `;
@@ -899,20 +956,16 @@ function openContactForm(id = null) {
     e.preventDefault();
     const name = $('#cName').value.trim();
     const phone = $('#cPhone').value.trim();
-    const email = $('#cEmail').value.trim();
     const note = $('#cNote').value.trim();
 
-    if (!name) {
-      toast('Nhập tên đi bạn', 'error');
-      return;
-    }
+    if (!name) { toast('Nhập tên đi bạn', 'error'); return; }
 
     if (c) {
-      Object.assign(c, { name, phone, email, note });
+      Object.assign(c, { name, phone, note });
       toast('Đã cập nhật', 'success');
     } else {
-      db.contacts.push({ id: uid(), name, phone, email, note, createdAt: Date.now() });
-      toast('Đã thêm người', 'success');
+      db.contacts.push({ id: uid(), name, phone, note, createdAt: Date.now() });
+      toast('Đã thêm người vay', 'success');
     }
 
     save();
@@ -925,24 +978,27 @@ function openContactForm(id = null) {
 /* ============================================================
    MODAL: TRANSACTION FORM
    ============================================================ */
-function openTxForm({ id = null, contactId = null } = {}) {
+function openTxForm({ id = null, contactId = null, type = null } = {}) {
   if (!db.contacts.length) {
-    toast('Thêm người trước đã nhé', 'error');
+    toast('Thêm người vay trước đã nhé', 'error');
     openContactForm();
     return;
   }
 
   const t = id ? db.transactions.find(x => x.id === id) : null;
-  const type = t ? t.type : 'lend';
+
+  const initialType = t ? t.type : (type || 'lend');
   const selectedContact = t ? t.contactId : (contactId || db.contacts[0].id);
   const date = t ? t.date : todayISO();
   const amount = t ? t.amount : '';
+  const rate = t ? t.rate : 10;
+  const dueDate = t ? (t.dueDate || '') : '';
   const note = t ? (t.note || '') : '';
 
   const title = t ? 'Sửa giao dịch' : 'Giao dịch mới';
 
   const typeButtons = Object.entries(TYPES).map(([k, v]) => `
-    <button type="button" class="type-btn${k === type ? ' active' : ''}" data-type="${k}">
+    <button type="button" class="type-btn${k === initialType ? ' active' : ''}" data-type="${k}">
       <span class="type-btn-icon">${icon(v.icon, 17)}</span>
       <span>${v.label}</span>
     </button>
@@ -962,15 +1018,23 @@ function openTxForm({ id = null, contactId = null } = {}) {
         <div class="type-grid" id="typeGrid">${typeButtons}</div>
 
         <div class="field">
-          <label class="field-label" for="txContact">Người <span style="color:var(--red)">*</span></label>
-          <select class="select-field" id="txContact" required>
-            ${contactOptions}
-          </select>
+          <label class="field-label" for="txContact">Người vay <span class="req">*</span></label>
+          <select class="select-field" id="txContact" required>${contactOptions}</select>
         </div>
 
         <div class="field">
-          <label class="field-label" for="txAmount">Số tiền (₫) <span style="color:var(--red)">*</span></label>
+          <label class="field-label" for="txAmount">Số tiền (₫) <span class="req">*</span></label>
           <input type="text" class="input money" id="txAmount" inputmode="numeric" placeholder="0" value="${amount ? nf.format(amount) : ''}" required autocomplete="off">
+        </div>
+
+        <div class="field" id="rateField" ${initialType !== 'lend' ? 'hidden' : ''}>
+          <label class="field-label" for="txRate">Lãi suất (%/tháng) <span class="req">*</span></label>
+          <input type="number" class="input" id="txRate" min="0" step="0.1" placeholder="VD: 10" value="${rate ?? ''}" autocomplete="off">
+        </div>
+
+        <div id="interestPreview" class="interest-preview" hidden>
+          <span>Lãi sau <b id="previewDays">0</b> ngày:</span>
+          <strong id="previewAmount">0 ₫</strong>
         </div>
 
         <div class="field-row">
@@ -978,9 +1042,9 @@ function openTxForm({ id = null, contactId = null } = {}) {
             <label class="field-label" for="txDate">Ngày</label>
             <input type="date" class="input" id="txDate" value="${date}">
           </div>
-          <div class="field">
+          <div class="field" id="dueField" ${initialType !== 'lend' ? 'hidden' : ''}>
             <label class="field-label" for="txDue">Hạn trả <span class="opt">(tuỳ chọn)</span></label>
-            <input type="date" class="input" id="txDue" value="${t?.dueDate || ''}">
+            <input type="date" class="input" id="txDue" value="${dueDate}">
           </div>
         </div>
 
@@ -991,40 +1055,70 @@ function openTxForm({ id = null, contactId = null } = {}) {
       </div>
       <div class="modal-foot">
         <button type="button" class="btn ghost" data-close>Huỷ</button>
-        <button type="submit" class="btn primary">${t ? 'Lưu thay đổi' : 'Thêm'}</button>
+        <button type="submit" class="btn accent">${t ? 'Lưu thay đổi' : 'Thêm'}</button>
       </div>
     </form>
   `;
 
   openModal(html);
 
-  // Type selector
-  let currentType = type;
+  let currentType = initialType;
+
+  function updateTypeUI() {
+    $$('#typeGrid [data-type]').forEach(b => b.classList.toggle('active', b.dataset.type === currentType));
+    $('#rateField').hidden = currentType !== 'lend';
+    $('#dueField').hidden = currentType !== 'lend';
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const preview = $('#interestPreview');
+    if (currentType !== 'lend') {
+      preview.hidden = true;
+      return;
+    }
+    const amt = Number($('#txAmount').value.replace(/\D/g, '')) || 0;
+    const r = Number($('#txRate').value) || 0;
+    const d = $('#txDate').value || todayISO();
+    if (amt > 0 && r > 0 && d) {
+      const days = daysBetween(d, todayISO());
+      const interest = amt * (r / 100) * (days / DAYS_PER_MONTH);
+      $('#previewDays').textContent = days;
+      $('#previewAmount').textContent = money(interest);
+      preview.hidden = false;
+    } else {
+      preview.hidden = true;
+    }
+  }
+
   $$('#typeGrid [data-type]').forEach(btn => {
     btn.addEventListener('click', () => {
       currentType = btn.dataset.type;
-      $$('#typeGrid [data-type]').forEach(b => b.classList.toggle('active', b === btn));
+      updateTypeUI();
     });
   });
 
-  // Money input formatting
   const amt = $('#txAmount');
   amt.addEventListener('input', () => {
     const digits = amt.value.replace(/\D/g, '');
     amt.value = digits ? nf.format(Number(digits)) : '';
+    updatePreview();
   });
 
-  // Submit
+  $('#txRate').addEventListener('input', updatePreview);
+  $('#txDate').addEventListener('change', updatePreview);
+
+  updateTypeUI();
+
   $('#txForm').addEventListener('submit', e => {
     e.preventDefault();
 
     const contactIdVal = $('#txContact').value;
     const amountVal = Number(amt.value.replace(/\D/g, ''));
     const dateVal = $('#txDate').value || todayISO();
-    const dueVal = $('#txDue').value || '';
     const noteVal = $('#txNote').value.trim();
 
-    if (!contactIdVal) return toast('Chọn người', 'error');
+    if (!contactIdVal) return toast('Chọn người vay', 'error');
     if (!amountVal || amountVal <= 0) return toast('Nhập số tiền hợp lệ', 'error');
 
     const data = {
@@ -1032,13 +1126,21 @@ function openTxForm({ id = null, contactId = null } = {}) {
       type: currentType,
       amount: amountVal,
       date: dateVal,
-      dueDate: dueVal,
       note: noteVal,
     };
 
+    if (currentType === 'lend') {
+      const rateVal = Number($('#txRate').value);
+      if (!Number.isFinite(rateVal) || rateVal < 0) return toast('Lãi suất không hợp lệ', 'error');
+      data.rate = rateVal;
+      data.dueDate = $('#txDue').value || '';
+    }
+
     if (t) {
       Object.assign(t, data);
-      toast('Đã cập nhật giao dịch', 'success');
+      // clear rate if changing away from lend
+      if (currentType !== 'lend') { delete t.rate; delete t.dueDate; }
+      toast('Đã cập nhật', 'success');
     } else {
       db.transactions.push({ id: uid(), ...data, createdAt: Date.now() });
       toast('Đã thêm giao dịch', 'success');
@@ -1051,7 +1153,7 @@ function openTxForm({ id = null, contactId = null } = {}) {
 }
 
 /* ============================================================
-   DELETE FLOWS
+   DELETE / CONFIRM
    ============================================================ */
 function openConfirm({ title, message, confirmText = 'Xoá', onConfirm, danger = true }) {
   const html = `
@@ -1064,7 +1166,7 @@ function openConfirm({ title, message, confirmText = 'Xoá', onConfirm, danger =
     </div>
     <div class="modal-foot">
       <button type="button" class="btn ghost" data-close>Huỷ</button>
-      <button type="button" class="btn ${danger ? 'danger' : 'primary'}" id="confirmOk">${escapeHtml(confirmText)}</button>
+      <button type="button" class="btn ${danger ? 'danger' : 'accent'}" id="confirmOk">${escapeHtml(confirmText)}</button>
     </div>
   `;
   openModal(html);
@@ -1079,14 +1181,13 @@ function confirmDeleteContact(id) {
   if (!c) return;
   const count = db.transactions.filter(t => t.contactId === id).length;
   openConfirm({
-    title: 'Xoá người này?',
-    message: `Bạn sắp xoá <b>${escapeHtml(c.name)}</b>${count ? ` và <b>${count} giao dịch</b> liên quan` : ''}. Hành động không thể hoàn tác.`,
+    title: 'Xoá người vay?',
+    message: `Bạn sắp xoá <b>${escapeHtml(c.name)}</b>${count ? ` và <b>${count} giao dịch</b> liên quan` : ''}. Không thể hoàn tác.`,
     confirmText: 'Xoá',
     onConfirm: () => {
       db.contacts = db.contacts.filter(x => x.id !== id);
       db.transactions = db.transactions.filter(t => t.contactId !== id);
-      save();
-      buildNav();
+      save(); buildNav();
       location.hash = '#/contacts';
       toast('Đã xoá', 'success');
     },
@@ -1096,12 +1197,11 @@ function confirmDeleteContact(id) {
 function confirmDeleteTx(id) {
   openConfirm({
     title: 'Xoá giao dịch?',
-    message: 'Giao dịch này sẽ bị xoá vĩnh viễn khỏi lịch sử.',
+    message: 'Giao dịch này sẽ bị xoá vĩnh viễn.',
     confirmText: 'Xoá',
     onConfirm: () => {
       db.transactions = db.transactions.filter(t => t.id !== id);
-      save();
-      navigate();
+      save(); navigate();
       toast('Đã xoá giao dịch', 'success');
     },
   });
@@ -1110,12 +1210,11 @@ function confirmDeleteTx(id) {
 function confirmClearAll() {
   openConfirm({
     title: 'Xoá toàn bộ dữ liệu?',
-    message: `Toàn bộ <b>${db.contacts.length} người</b> và <b>${db.transactions.length} giao dịch</b> sẽ bị xoá. Hành động không thể hoàn tác — nên sao lưu trước.`,
+    message: `Toàn bộ <b>${db.contacts.length} người vay</b> và <b>${db.transactions.length} giao dịch</b> sẽ bị xoá. Nên sao lưu trước.`,
     confirmText: 'Xoá hết',
     onConfirm: () => {
       db = { contacts: [], transactions: [] };
-      save();
-      buildNav();
+      save(); buildNav();
       location.hash = '#/dashboard';
       toast('Đã xoá toàn bộ', 'success');
     },
@@ -1137,13 +1236,14 @@ function exportJSON() {
 }
 
 function exportCSV() {
-  const header = ['Người', 'Loại', 'Số tiền', 'Ngày', 'Hạn trả', 'Ghi chú'];
+  const header = ['Người vay', 'Loại', 'Số tiền', 'Lãi suất (%/tháng)', 'Ngày', 'Hạn trả', 'Ghi chú'];
   const rows = db.transactions.map(t => {
     const c = db.contacts.find(x => x.id === t.contactId);
     return [
       c?.name || '',
       TYPES[t.type]?.label || t.type,
       t.amount,
+      t.type === 'lend' ? (t.rate || '') : '',
       t.date,
       t.dueDate || '',
       t.note || '',
@@ -1166,26 +1266,19 @@ async function handleImportFile(e) {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    const text = await file.text();
-    const data = JSON.parse(text);
+    const data = JSON.parse(await file.text());
     if (!data || !Array.isArray(data.contacts) || !Array.isArray(data.transactions)) {
       throw new Error('Sai định dạng');
     }
-
     openConfirm({
       title: 'Khôi phục dữ liệu?',
-      message: `Bạn sắp thay thế toàn bộ dữ liệu hiện tại bằng <b>${data.contacts.length} người</b> và <b>${data.transactions.length} giao dịch</b> từ file.`,
+      message: `Thay thế toàn bộ dữ liệu hiện tại bằng <b>${data.contacts.length} người vay</b> và <b>${data.transactions.length} giao dịch</b> từ file.`,
       confirmText: 'Khôi phục',
       danger: false,
       onConfirm: () => {
-        db = {
-          contacts: data.contacts,
-          transactions: data.transactions,
-        };
-        save();
-        buildNav();
-        navigate();
-        toast('Đã khôi phục dữ liệu', 'success');
+        db = { contacts: data.contacts, transactions: data.transactions };
+        save(); buildNav(); navigate();
+        toast('Đã khôi phục', 'success');
       },
     });
   } catch (err) {
@@ -1197,22 +1290,18 @@ async function handleImportFile(e) {
 }
 
 /* ============================================================
-   KEYBOARD SHORTCUTS
+   SHORTCUTS
    ============================================================ */
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    if ($('#modalRoot').innerHTML) {
-      closeModal();
-    }
+    if ($('#modalRoot').innerHTML) closeModal();
   }
-
-  // Don't trigger when typing
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
   if (e.key === 'n' || e.key === 'N') {
     e.preventDefault();
-    openTxForm({});
+    openTxForm({ type: 'lend' });
   }
   if (e.key === '/') {
     e.preventDefault();
@@ -1225,21 +1314,15 @@ document.addEventListener('keydown', e => {
    INIT
    ============================================================ */
 function init() {
-  // Theme first (avoid flash)
   applyTheme(getStoredTheme() || 'system');
 
-  // System theme listener
   window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if ((getStoredTheme() || 'system') === 'system') applyTheme('system');
   });
 
-  // Load data
   load();
-
-  // Build sidebar + tabbar
   buildNav();
 
-  // Inject static icons
   $$('[data-icon]').forEach(el => {
     const name = el.dataset.icon;
     if (name === 'theme') {
@@ -1250,26 +1333,19 @@ function init() {
     }
   });
 
-  // Global actions (topbar, sidebar, fab)
   document.body.addEventListener('click', e => {
     const actionEl = e.target.closest('[data-action]');
     if (!actionEl) return;
-    // Skip if inside #view — handled separately to avoid double-binding
     if ($('#view')?.contains(actionEl)) return;
     handleAction({ currentTarget: actionEl });
   });
 
-  // FAB
-  $('#fab').addEventListener('click', () => openTxForm({}));
+  $('#fab').addEventListener('click', () => openTxForm({ type: 'lend' }));
 
-  // Router
   window.addEventListener('hashchange', navigate);
   if (!location.hash) location.hash = '#/dashboard';
   navigate();
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
