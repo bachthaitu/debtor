@@ -666,4 +666,610 @@ function txRowHTML(t) {
 function renderSettings() {
   const themeVal = getStoredTheme() || 'system';
 
- 
+  const html = `
+    <div class="settings-group">
+      <h3 class="settings-group-title">Giao diện</h3>
+      <div class="card" style="padding:16px">
+        <div class="field-label" style="margin-bottom:10px">Chế độ hiển thị</div>
+        <div class="seg-group" id="themeSeg">
+          <button class="seg-btn${themeVal === 'light' ? ' active' : ''}" data-theme-val="light">Sáng</button>
+          <button class="seg-btn${themeVal === 'dark' ? ' active' : ''}" data-theme-val="dark">Tối</button>
+          <button class="seg-btn${themeVal === 'system' ? ' active' : ''}" data-theme-val="system">Hệ thống</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3 class="settings-group-title">Dữ liệu</h3>
+      <button class="settings-item" data-action="export-json">
+        <span class="settings-item-icon accent">${icon('download', 19)}</span>
+        <div class="settings-item-body">
+          <div class="settings-item-title">Sao lưu (JSON)</div>
+          <div class="settings-item-desc">Tải toàn bộ danh bạ và giao dịch về máy</div>
+        </div>
+        ${icon('chevronRight', 18)}
+      </button>
+      <label class="settings-item" for="importFile" style="cursor:pointer">
+        <span class="settings-item-icon accent">${icon('upload', 19)}</span>
+        <div class="settings-item-body">
+          <div class="settings-item-title">Khôi phục từ file</div>
+          <div class="settings-item-desc">Ghi đè dữ liệu hiện tại bằng file JSON đã sao lưu</div>
+        </div>
+        ${icon('chevronRight', 18)}
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </label>
+      <button class="settings-item" data-action="export-csv">
+        <span class="settings-item-icon">${icon('download', 19)}</span>
+        <div class="settings-item-body">
+          <div class="settings-item-title">Xuất CSV</div>
+          <div class="settings-item-desc">Xuất danh sách giao dịch ra Excel / Google Sheets</div>
+        </div>
+        ${icon('chevronRight', 18)}
+      </button>
+    </div>
+
+    <div class="settings-group">
+      <h3 class="settings-group-title">Vùng nguy hiểm</h3>
+      <button class="settings-item" data-action="clear-all">
+        <span class="settings-item-icon danger">${icon('trash', 19)}</span>
+        <div class="settings-item-body">
+          <div class="settings-item-title" style="color:var(--red)">Xoá toàn bộ dữ liệu</div>
+          <div class="settings-item-desc">Xoá hết danh bạ và giao dịch (không thể hoàn tác)</div>
+        </div>
+      </button>
+    </div>
+
+    <div class="settings-group">
+      <h3 class="settings-group-title">Về ứng dụng</h3>
+      <div class="card" style="padding:18px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span class="brand-mark" style="width:36px;height:36px;font-size:20px">D</span>
+          <div>
+            <div style="font-weight:700;font-size:15px">Debtor</div>
+            <div style="font-size:12.5px;color:var(--text-2)">v1.0 · Chạy hoàn toàn trên trình duyệt</div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin:0">
+          Dữ liệu được lưu trong <b>localStorage</b> của trình duyệt bạn đang dùng.
+          Hãy sao lưu định kỳ để tránh mất dữ liệu khi xoá cache hoặc đổi thiết bị.
+        </p>
+      </div>
+    </div>
+  `;
+
+  $('#view').innerHTML = html;
+  bindViewEvents();
+}
+
+/* ============================================================
+   EVENT BINDING (view-level)
+   ============================================================ */
+function bindViewEvents() {
+  const view = $('#view');
+
+  // Contact card click
+  $$('[data-contact-id]', view).forEach(el => {
+    el.addEventListener('click', () => {
+      location.hash = `#/contacts/${el.dataset.contactId}`;
+    });
+  });
+
+  // Tx row click (edit)
+  $$('[data-tx-id]', view).forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('[data-tx-edit]') || e.target.closest('[data-tx-del]')) return;
+      openTxForm({ id: row.dataset.txId });
+    });
+  });
+
+  // Tx edit buttons
+  $$('[data-tx-edit]', view).forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openTxForm({ id: btn.dataset.txEdit });
+    });
+  });
+
+  // Tx delete buttons
+  $$('[data-tx-del]', view).forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      confirmDeleteTx(btn.dataset.txDel);
+    });
+  });
+
+  // Theme segment
+  $$('#themeSeg [data-theme-val]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyTheme(btn.dataset.themeVal);
+      renderSettings();
+    });
+  });
+
+  // Import file
+  const imp = $('#importFile');
+  if (imp) imp.addEventListener('change', handleImportFile);
+
+  // Global actions inside view
+  $$('[data-action]', view).forEach(el => {
+    el.addEventListener('click', handleAction);
+  });
+}
+
+/* ============================================================
+   ACTION HANDLER
+   ============================================================ */
+function handleAction(e) {
+  const el = e.currentTarget;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+  const contactId = el.dataset.contact;
+
+  switch (action) {
+    case 'new-tx':      openTxForm({ contactId }); break;
+    case 'edit-contact':openContactForm(id); break;
+    case 'delete-contact': confirmDeleteContact(id); break;
+    case 'new-contact': openContactForm(); break;
+    case 'theme-toggle': toggleTheme(); break;
+    case 'back':        history.back(); break;
+    case 'export-json': exportJSON(); break;
+    case 'export-csv':  exportCSV(); break;
+    case 'clear-all':   confirmClearAll(); break;
+  }
+}
+
+/* ============================================================
+   MODAL SYSTEM
+   ============================================================ */
+function openModal(html, opts = {}) {
+  const root = $('#modalRoot');
+  root.innerHTML = `
+    <div class="modal-backdrop" id="modalBackdrop">
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-handle"></div>
+        ${html}
+      </div>
+    </div>
+  `;
+  document.body.style.overflow = 'hidden';
+
+  $('#modalBackdrop').addEventListener('click', e => {
+    if (e.target.id === 'modalBackdrop') closeModal();
+  });
+
+  // Bind close buttons
+  $$('[data-close]', root).forEach(el => el.addEventListener('click', closeModal));
+
+  // Autofocus first input (desktop only)
+  if (window.innerWidth > 640) {
+    setTimeout(() => {
+      const first = root.querySelector('input:not([type=hidden]), select, textarea');
+      if (first) first.focus();
+    }, 80);
+  }
+}
+
+function closeModal() {
+  const root = $('#modalRoot');
+  root.innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+/* ============================================================
+   MODAL: CONTACT FORM
+   ============================================================ */
+function openContactForm(id = null) {
+  const c = id ? db.contacts.find(x => x.id === id) : null;
+  const title = c ? 'Sửa người' : 'Thêm người';
+
+  const html = `
+    <div class="modal-head">
+      <h2 class="modal-title">${title}</h2>
+      <button class="icon-btn" data-close type="button" aria-label="Đóng">${icon('x', 18)}</button>
+    </div>
+    <form id="contactForm">
+      <div class="modal-body">
+        <div class="field">
+          <label class="field-label" for="cName">Tên <span style="color:var(--red)">*</span></label>
+          <input type="text" class="input" id="cName" maxlength="60" placeholder="VD: Nguyễn Văn A" value="${escapeHtml(c?.name || '')}" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label" for="cPhone">Số điện thoại <span class="opt">(tuỳ chọn)</span></label>
+          <input type="tel" class="input" id="cPhone" maxlength="20" placeholder="VD: 0912 345 678" value="${escapeHtml(c?.phone || '')}" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label" for="cEmail">Email <span class="opt">(tuỳ chọn)</span></label>
+          <input type="email" class="input" id="cEmail" maxlength="80" placeholder="VD: a@example.com" value="${escapeHtml(c?.email || '')}" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label" for="cNote">Ghi chú <span class="opt">(tuỳ chọn)</span></label>
+          <textarea class="textarea" id="cNote" maxlength="200" placeholder="VD: Bạn học cấp 3, hay vay tiền mặt…">${escapeHtml(c?.note || '')}</textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" data-close>Huỷ</button>
+        <button type="submit" class="btn primary">${c ? 'Lưu thay đổi' : 'Thêm'}</button>
+      </div>
+    </form>
+  `;
+
+  openModal(html);
+
+  $('#contactForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('#cName').value.trim();
+    const phone = $('#cPhone').value.trim();
+    const email = $('#cEmail').value.trim();
+    const note = $('#cNote').value.trim();
+
+    if (!name) {
+      toast('Nhập tên đi bạn', 'error');
+      return;
+    }
+
+    if (c) {
+      Object.assign(c, { name, phone, email, note });
+      toast('Đã cập nhật', 'success');
+    } else {
+      db.contacts.push({ id: uid(), name, phone, email, note, createdAt: Date.now() });
+      toast('Đã thêm người', 'success');
+    }
+
+    save();
+    closeModal();
+    buildNav();
+    navigate();
+  });
+}
+
+/* ============================================================
+   MODAL: TRANSACTION FORM
+   ============================================================ */
+function openTxForm({ id = null, contactId = null } = {}) {
+  if (!db.contacts.length) {
+    toast('Thêm người trước đã nhé', 'error');
+    openContactForm();
+    return;
+  }
+
+  const t = id ? db.transactions.find(x => x.id === id) : null;
+  const type = t ? t.type : 'lend';
+  const selectedContact = t ? t.contactId : (contactId || db.contacts[0].id);
+  const date = t ? t.date : todayISO();
+  const amount = t ? t.amount : '';
+  const note = t ? (t.note || '') : '';
+
+  const title = t ? 'Sửa giao dịch' : 'Giao dịch mới';
+
+  const typeButtons = Object.entries(TYPES).map(([k, v]) => `
+    <button type="button" class="type-btn${k === type ? ' active' : ''}" data-type="${k}">
+      <span class="type-btn-icon">${icon(v.icon, 17)}</span>
+      <span>${v.label}</span>
+    </button>
+  `).join('');
+
+  const contactOptions = db.contacts.map(c =>
+    `<option value="${c.id}"${c.id === selectedContact ? ' selected' : ''}>${escapeHtml(c.name)}</option>`
+  ).join('');
+
+  const html = `
+    <div class="modal-head">
+      <h2 class="modal-title">${title}</h2>
+      <button class="icon-btn" data-close type="button" aria-label="Đóng">${icon('x', 18)}</button>
+    </div>
+    <form id="txForm">
+      <div class="modal-body">
+        <div class="type-grid" id="typeGrid">${typeButtons}</div>
+
+        <div class="field">
+          <label class="field-label" for="txContact">Người <span style="color:var(--red)">*</span></label>
+          <select class="select-field" id="txContact" required>
+            ${contactOptions}
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="txAmount">Số tiền (₫) <span style="color:var(--red)">*</span></label>
+          <input type="text" class="input money" id="txAmount" inputmode="numeric" placeholder="0" value="${amount ? nf.format(amount) : ''}" required autocomplete="off">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="txDate">Ngày</label>
+            <input type="date" class="input" id="txDate" value="${date}">
+          </div>
+          <div class="field">
+            <label class="field-label" for="txDue">Hạn trả <span class="opt">(tuỳ chọn)</span></label>
+            <input type="date" class="input" id="txDue" value="${t?.dueDate || ''}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="txNote">Ghi chú <span class="opt">(tuỳ chọn)</span></label>
+          <input type="text" class="input" id="txNote" maxlength="120" placeholder="VD: vay mua điện thoại" value="${escapeHtml(note)}" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" data-close>Huỷ</button>
+        <button type="submit" class="btn primary">${t ? 'Lưu thay đổi' : 'Thêm'}</button>
+      </div>
+    </form>
+  `;
+
+  openModal(html);
+
+  // Type selector
+  let currentType = type;
+  $$('#typeGrid [data-type]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentType = btn.dataset.type;
+      $$('#typeGrid [data-type]').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  // Money input formatting
+  const amt = $('#txAmount');
+  amt.addEventListener('input', () => {
+    const digits = amt.value.replace(/\D/g, '');
+    amt.value = digits ? nf.format(Number(digits)) : '';
+  });
+
+  // Submit
+  $('#txForm').addEventListener('submit', e => {
+    e.preventDefault();
+
+    const contactIdVal = $('#txContact').value;
+    const amountVal = Number(amt.value.replace(/\D/g, ''));
+    const dateVal = $('#txDate').value || todayISO();
+    const dueVal = $('#txDue').value || '';
+    const noteVal = $('#txNote').value.trim();
+
+    if (!contactIdVal) return toast('Chọn người', 'error');
+    if (!amountVal || amountVal <= 0) return toast('Nhập số tiền hợp lệ', 'error');
+
+    const data = {
+      contactId: contactIdVal,
+      type: currentType,
+      amount: amountVal,
+      date: dateVal,
+      dueDate: dueVal,
+      note: noteVal,
+    };
+
+    if (t) {
+      Object.assign(t, data);
+      toast('Đã cập nhật giao dịch', 'success');
+    } else {
+      db.transactions.push({ id: uid(), ...data, createdAt: Date.now() });
+      toast('Đã thêm giao dịch', 'success');
+    }
+
+    save();
+    closeModal();
+    navigate();
+  });
+}
+
+/* ============================================================
+   DELETE FLOWS
+   ============================================================ */
+function openConfirm({ title, message, confirmText = 'Xoá', onConfirm, danger = true }) {
+  const html = `
+    <div class="modal-head">
+      <h2 class="modal-title">${escapeHtml(title)}</h2>
+      <button class="icon-btn" data-close type="button" aria-label="Đóng">${icon('x', 18)}</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--text-2)">${message}</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn ghost" data-close>Huỷ</button>
+      <button type="button" class="btn ${danger ? 'danger' : 'primary'}" id="confirmOk">${escapeHtml(confirmText)}</button>
+    </div>
+  `;
+  openModal(html);
+  $('#confirmOk').addEventListener('click', () => {
+    closeModal();
+    onConfirm?.();
+  });
+}
+
+function confirmDeleteContact(id) {
+  const c = db.contacts.find(x => x.id === id);
+  if (!c) return;
+  const count = db.transactions.filter(t => t.contactId === id).length;
+  openConfirm({
+    title: 'Xoá người này?',
+    message: `Bạn sắp xoá <b>${escapeHtml(c.name)}</b>${count ? ` và <b>${count} giao dịch</b> liên quan` : ''}. Hành động không thể hoàn tác.`,
+    confirmText: 'Xoá',
+    onConfirm: () => {
+      db.contacts = db.contacts.filter(x => x.id !== id);
+      db.transactions = db.transactions.filter(t => t.contactId !== id);
+      save();
+      buildNav();
+      location.hash = '#/contacts';
+      toast('Đã xoá', 'success');
+    },
+  });
+}
+
+function confirmDeleteTx(id) {
+  openConfirm({
+    title: 'Xoá giao dịch?',
+    message: 'Giao dịch này sẽ bị xoá vĩnh viễn khỏi lịch sử.',
+    confirmText: 'Xoá',
+    onConfirm: () => {
+      db.transactions = db.transactions.filter(t => t.id !== id);
+      save();
+      navigate();
+      toast('Đã xoá giao dịch', 'success');
+    },
+  });
+}
+
+function confirmClearAll() {
+  openConfirm({
+    title: 'Xoá toàn bộ dữ liệu?',
+    message: `Toàn bộ <b>${db.contacts.length} người</b> và <b>${db.transactions.length} giao dịch</b> sẽ bị xoá. Hành động không thể hoàn tác — nên sao lưu trước.`,
+    confirmText: 'Xoá hết',
+    onConfirm: () => {
+      db = { contacts: [], transactions: [] };
+      save();
+      buildNav();
+      location.hash = '#/dashboard';
+      toast('Đã xoá toàn bộ', 'success');
+    },
+  });
+}
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `debtor-backup-${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Đã xuất file sao lưu', 'success');
+}
+
+function exportCSV() {
+  const header = ['Người', 'Loại', 'Số tiền', 'Ngày', 'Hạn trả', 'Ghi chú'];
+  const rows = db.transactions.map(t => {
+    const c = db.contacts.find(x => x.id === t.contactId);
+    return [
+      c?.name || '',
+      TYPES[t.type]?.label || t.type,
+      t.amount,
+      t.date,
+      t.dueDate || '',
+      t.note || '',
+    ];
+  });
+  const csv = [header, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `debtor-${todayISO()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Đã xuất CSV', 'success');
+}
+
+async function handleImportFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || !Array.isArray(data.contacts) || !Array.isArray(data.transactions)) {
+      throw new Error('Sai định dạng');
+    }
+
+    openConfirm({
+      title: 'Khôi phục dữ liệu?',
+      message: `Bạn sắp thay thế toàn bộ dữ liệu hiện tại bằng <b>${data.contacts.length} người</b> và <b>${data.transactions.length} giao dịch</b> từ file.`,
+      confirmText: 'Khôi phục',
+      danger: false,
+      onConfirm: () => {
+        db = {
+          contacts: data.contacts,
+          transactions: data.transactions,
+        };
+        save();
+        buildNav();
+        navigate();
+        toast('Đã khôi phục dữ liệu', 'success');
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    toast('File không hợp lệ', 'error');
+  } finally {
+    e.target.value = '';
+  }
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS
+   ============================================================ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if ($('#modalRoot').innerHTML) {
+      closeModal();
+    }
+  }
+
+  // Don't trigger when typing
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+  if (e.key === 'n' || e.key === 'N') {
+    e.preventDefault();
+    openTxForm({});
+  }
+  if (e.key === '/') {
+    e.preventDefault();
+    const search = $('.search-input');
+    if (search) search.focus();
+  }
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  // Theme first (avoid flash)
+  applyTheme(getStoredTheme() || 'system');
+
+  // System theme listener
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if ((getStoredTheme() || 'system') === 'system') applyTheme('system');
+  });
+
+  // Load data
+  load();
+
+  // Build sidebar + tabbar
+  buildNav();
+
+  // Inject static icons
+  $$('[data-icon]').forEach(el => {
+    const name = el.dataset.icon;
+    if (name === 'theme') {
+      const actual = document.documentElement.dataset.theme;
+      el.innerHTML = icon(actual === 'dark' ? 'sun' : 'moon', 20);
+    } else if (name === 'plus') {
+      el.innerHTML = icon('plus', 22);
+    }
+  });
+
+  // Global actions (topbar, sidebar, fab)
+  document.body.addEventListener('click', e => {
+    const actionEl = e.target.closest('[data-action]');
+    if (!actionEl) return;
+    // Skip if inside #view — handled separately to avoid double-binding
+    if ($('#view')?.contains(actionEl)) return;
+    handleAction({ currentTarget: actionEl });
+  });
+
+  // FAB
+  $('#fab').addEventListener('click', () => openTxForm({}));
+
+  // Router
+  window.addEventListener('hashchange', navigate);
+  if (!location.hash) location.hash = '#/dashboard';
+  navigate();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
