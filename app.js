@@ -3,8 +3,8 @@
    ========================================================= */
 'use strict';
 
-const DB_KEY = 'debtor-mgmt-v1';
-const THEME_KEY = 'debtor-theme-v1';
+const DB_KEY = 'debtor-mgmt-v2';
+const THEME_KEY = 'debtor-theme-v2';
 const DUE_SOON_DAYS = 7;
 
 const NAV = [
@@ -23,15 +23,14 @@ const PAGE_TITLES = {
 
 const TERMS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-/* ============ STATE ============ */
 let db = { contacts: [], transactions: [] };
 
 /* ============ ICONS ============ */
 const ICONS = {
-  grid:   '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  grid:   '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   users:  '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   list:   '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
-  cog:    '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  cog:    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   plus:   '<path d="M5 12h14"/><path d="M12 5v14"/>',
   edit:   '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
   trash:  '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
@@ -45,8 +44,7 @@ const ICONS = {
   check:  '<path d="M20 6 9 17l-5-5"/>',
   bell:   '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   wallet: '<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
-  calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M16 2v4"/>',
-  percent: '<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+  percent:'<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
   arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
 };
 
@@ -80,10 +78,7 @@ const hashStr = s => {
   return Math.abs(h);
 };
 
-const avatarBg = name => {
-  const hue = hashStr(name) % 360;
-  return `hsl(${hue} 45% 55%)`;
-};
+const avatarBg = name => `hsl(${hashStr(name) % 360} 42% 52%)`;
 
 const todayISO = () => {
   const d = new Date();
@@ -111,10 +106,6 @@ const addMonths = (iso, months) => {
 };
 
 /* ============ CALCULATIONS ============ */
-/**
- * Lãi = gốc × (lãi suất %/tháng ÷ 100) × số tháng
- * VD: 5.000.000 × 20/100 × 1 = 1.000.000
- */
 function lendCalc(lend) {
   const principal = Number(lend.amount) || 0;
   const rate = Number(lend.rate) || 0;
@@ -126,7 +117,6 @@ function lendCalc(lend) {
 
 function lendState(lend) {
   const calc = lendCalc(lend);
-
   const payments = db.transactions.filter(t => t.lendId === lend.id);
   const paidInterest = payments
     .filter(p => p.type === 'interest')
@@ -145,12 +135,14 @@ function lendState(lend) {
   let status = 'active';
   let statusLabel = 'Đang vay';
   if (outstanding <= 0) {
-    status = 'closed'; statusLabel = 'Tất toán';
+    status = 'closed';
+    statusLabel = 'Tất toán';
   } else if (daysToDue < 0) {
-    status = 'overdue'; statusLabel = `Quá ${-daysToDue} ngày`;
+    status = 'overdue';
+    statusLabel = `Quá ${-daysToDue} ngày`;
   } else if (daysToDue <= DUE_SOON_DAYS) {
     status = 'due-soon';
-    statusLabel = daysToDue === 0 ? 'Đáo hạn hôm nay' : `Còn ${daysToDue} ngày`;
+    statusLabel = daysToDue === 0 ? 'Hôm nay' : `Còn ${daysToDue} ngày`;
   } else {
     statusLabel = `Còn ${daysToDue} ngày`;
   }
@@ -192,14 +184,8 @@ function contactState(contactId) {
   return {
     lends,
     count: lends.length,
-    totalOutstanding,
-    totalPrincipalOut,
-    totalInterestOut,
-    totalPaid,
-    overdueCount,
-    dueSoonCount,
-    activeCount,
-    closedCount,
+    totalOutstanding, totalPrincipalOut, totalInterestOut, totalPaid,
+    overdueCount, dueSoonCount, activeCount, closedCount,
   };
 }
 
@@ -299,7 +285,7 @@ function applyTheme(theme) {
     el.innerHTML = icon(actual === 'dark' ? 'sun' : 'moon', 18);
   });
   $$('[data-theme-label]').forEach(el => {
-    el.textContent = actual === 'dark' ? 'Giao diện tối' : 'Giao diện sáng';
+    el.textContent = actual === 'dark' ? 'Chế độ tối' : 'Chế độ sáng';
   });
 }
 
@@ -318,7 +304,7 @@ function toast(msg, type = 'info') {
   stack.appendChild(el);
   setTimeout(() => {
     el.classList.add('leaving');
-    setTimeout(() => el.remove(), 200);
+    setTimeout(() => el.remove(), 180);
   }, 2200);
 }
 
@@ -363,8 +349,7 @@ function navigate() {
   $('#pageTitle').textContent = title;
 
   const backBtn = $('#backBtn');
-  if (page === 'contacts' && id) backBtn.hidden = false;
-  else backBtn.hidden = true;
+  backBtn.hidden = !(page === 'contacts' && id);
 
   setActiveNav(page);
 
@@ -381,16 +366,11 @@ function navigate() {
 function renderTopbarActions(page, id) {
   const box = $('#topbarActions');
   if (page === 'contacts' && id) {
-    box.innerHTML = `
-      <button class="btn accent sm" data-action="new-lend" data-contact="${id}">
-        ${icon('plus', 15)} Cho vay
-      </button>`;
+    box.innerHTML = `<button class="btn accent sm" data-action="new-lend" data-contact="${id}">${icon('plus', 14)} Cho vay</button>`;
   } else if (page === 'contacts') {
-    box.innerHTML = `<button class="btn accent sm" data-action="new-contact">${icon('plus', 15)} Thêm người</button>`;
-  } else if (page === 'activity') {
-    box.innerHTML = `<button class="btn accent sm" data-action="new-lend">${icon('plus', 15)} Cho vay</button>`;
-  } else if (page === 'dashboard') {
-    box.innerHTML = `<button class="btn accent sm" data-action="new-lend">${icon('plus', 15)} Cho vay</button>`;
+    box.innerHTML = `<button class="btn accent sm" data-action="new-contact">${icon('plus', 14)} Thêm người</button>`;
+  } else if (page === 'activity' || page === 'dashboard') {
+    box.innerHTML = `<button class="btn accent sm" data-action="new-lend">${icon('plus', 14)} Cho vay</button>`;
   } else {
     box.innerHTML = '';
   }
@@ -465,7 +445,7 @@ function renderDashboard() {
     ${alerts.length ? `
     <section class="section">
       <div class="section-head">
-        <h2 class="section-title">${icon('bell', 17)} Cần chú ý (${alerts.length})</h2>
+        <h2 class="section-title">Cần chú ý (${alerts.length})</h2>
       </div>
       <div class="table table-contacts">
         <div class="table-head">
@@ -475,7 +455,7 @@ function renderDashboard() {
           <div>Trạng thái</div>
           <div></div>
         </div>
-        ${alerts.slice(0, 5).map(a => attentionRowHTML(a)).join('')}
+        ${alerts.slice(0, 5).map(attentionRowHTML).join('')}
       </div>
     </section>` : ''}
 
@@ -510,12 +490,11 @@ function renderDashboard() {
 }
 
 function attentionRowHTML({ contact, state }) {
-  const isOverdue = state.status === 'overdue';
   return `
     <div class="table-row" data-contact-id="${contact.id}">
       <div class="cell cell-person">
         <div class="cell-avatar" style="background:${avatarBg(contact.name)}">${esc(initials(contact.name))}</div>
-        <div style="min-width:0">
+        <div>
           <div class="cell-person-name">${esc(contact.name)}</div>
           <div class="cell-person-sub">Gốc ${money(state.principal)}</div>
         </div>
@@ -536,9 +515,7 @@ function renderChart(months) {
   const maxVal = Math.max(...months.flatMap(m => [m.in, m.out]), 1);
   const hasData = months.some(m => m.in > 0 || m.out > 0);
 
-  if (!hasData) {
-    return `<div class="chart-empty">Chưa có dữ liệu giao dịch</div>`;
-  }
+  if (!hasData) return `<div class="chart-empty">Chưa có dữ liệu giao dịch</div>`;
 
   return `
     <div class="chart">
@@ -560,7 +537,7 @@ function renderChart(months) {
 }
 
 /* ============================================================
-   CONTACTS LIST
+   CONTACTS
    ============================================================ */
 function renderContacts() {
   const q = (window.__search || '').trim().toLowerCase();
@@ -596,16 +573,16 @@ function renderContacts() {
                value="${esc(window.__search || '')}" autocomplete="off">
       </div>
       <select class="select" id="contactSort">
-        <option value="balance"${sortBy === 'balance' ? ' selected' : ''}>Dư nợ cao nhất</option>
-        <option value="overdue"${sortBy === 'overdue' ? ' selected' : ''}>Quá hạn nhiều nhất</option>
-        <option value="name"${sortBy === 'name' ? ' selected' : ''}>Tên A–Z</option>
+        <option value="balance"${sortBy === 'balance' ? ' selected' : ''}>Dư nợ cao nhất / Highest balance</option>
+        <option value="overdue"${sortBy === 'overdue' ? ' selected' : ''}>Quá hạn nhiều / Most overdue</option>
+        <option value="name"${sortBy === 'name' ? ' selected' : ''}>Tên A–Z / Name A–Z</option>
       </select>
     </div>
 
     ${!db.contacts.length ? `
       <div class="empty">
         <div class="empty-title">Chưa có người vay nào</div>
-        <div class="empty-text">Thêm người vay đầu tiên để bắt đầu.</div>
+        <div class="empty-text">Thêm người vay đầu tiên để bắt đầu quản lý gốc và lãi.</div>
         <button class="btn accent" data-action="new-contact">${icon('plus', 15)} Thêm người vay</button>
       </div>
     ` : !list.length ? `
@@ -667,7 +644,7 @@ function contactRowHTML(c, s) {
     <div class="table-row" data-contact-id="${c.id}">
       <div class="cell cell-person">
         <div class="cell-avatar" style="background:${avatarBg(c.name)}">${esc(initials(c.name))}</div>
-        <div style="min-width:0">
+        <div>
           <div class="cell-person-name">${esc(c.name)}</div>
           <div class="cell-person-sub">${sub}</div>
         </div>
@@ -734,9 +711,9 @@ function renderContactDetail(id) {
       </div>
     </section>
 
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px">
       <button class="btn accent" data-action="new-lend" data-contact="${id}">${icon('plus', 15)} Cho vay mới</button>
-      <button class="btn ghost" data-action="edit-contact" data-id="${id}">${icon('edit', 15)} Sửa thông tin</button>
+      <button class="btn ghost" data-action="edit-contact" data-id="${id}">${icon('edit', 15)} Sửa</button>
       <button class="btn ghost" data-action="print-contact" data-id="${id}">${icon('print', 15)} In sao kê</button>
       <button class="btn soft-danger" data-action="delete-contact" data-id="${id}">${icon('trash', 15)} Xoá</button>
     </div>
@@ -793,10 +770,9 @@ function renderContactDetail(id) {
 function lendRowHTML(lend) {
   const s = lendState(lend);
   const closed = s.status === 'closed';
-  const progressCls = closed ? 'closed' : s.status === 'overdue' ? 'overdue' : '';
 
   return `
-    <div class="table-row ${closed ? '' : ''}" data-lend-id="${lend.id}">
+    <div class="table-row" data-lend-id="${lend.id}">
       <div class="cell cell-text" data-label="Ngày vay">${fmtDate(lend.date)}</div>
       <div class="cell num cell-strong" data-label="Gốc">${money(s.principal)}</div>
       <div class="cell num cell-text" data-label="Lãi/tháng">${s.rate}%</div>
@@ -822,7 +798,7 @@ function paymentRowHTML(p) {
   const lend = db.transactions.find(t => t.id === p.lendId);
   const isInterest = p.type === 'interest';
   return `
-    <div class="table-row no-hover">
+    <div class="table-row" style="cursor:default">
       <div class="cell cell-text" data-label="Ngày">${fmtDate(p.date)}</div>
       <div class="cell cell-text" data-label="Loại">${isInterest ? 'Thu lãi' : 'Thu gốc'}</div>
       <div class="cell num cell-strong green" data-label="Số tiền">+${money(p.amount)}</div>
@@ -863,10 +839,10 @@ function renderActivity() {
                value="${esc(window.__search || '')}" autocomplete="off">
       </div>
       <select class="select" id="actFilter">
-        <option value="all"${filter === 'all' ? ' selected' : ''}>Tất cả loại</option>
-        <option value="lend"${filter === 'lend' ? ' selected' : ''}>Cho vay</option>
-        <option value="interest"${filter === 'interest' ? ' selected' : ''}>Thu lãi</option>
-        <option value="principal"${filter === 'principal' ? ' selected' : ''}>Thu gốc</option>
+        <option value="all"${filter === 'all' ? ' selected' : ''}>Tất cả / All</option>
+        <option value="lend"${filter === 'lend' ? ' selected' : ''}>Cho vay / Lend</option>
+        <option value="interest"${filter === 'interest' ? ' selected' : ''}>Thu lãi / Interest</option>
+        <option value="principal"${filter === 'principal' ? ' selected' : ''}>Thu gốc / Principal</option>
       </select>
     </div>
 
@@ -934,7 +910,9 @@ function txRowHTML(t) {
       <div class="cell cell-text" data-label="Ngày">${fmtDate(t.date)}</div>
       <div class="cell cell-person" data-label="Người vay">
         <div class="cell-avatar" style="background:${avatarBg(name)};width:32px;height:32px;font-size:11px;border-radius:8px">${esc(initials(name))}</div>
-        <div class="cell-person-name" style="font-size:13.5px">${esc(name)}</div>
+        <div>
+          <div class="cell-person-name" style="font-size:13.5px">${esc(name)}</div>
+        </div>
       </div>
       <div class="cell cell-text" data-label="Loại">${typeLabel}</div>
       <div class="cell num cell-strong ${signCls}" data-label="Số tiền">${sign}${money(t.amount)}</div>
@@ -955,9 +933,9 @@ function renderSettings() {
 
   $('#view').innerHTML = `
     <div class="settings-group">
-      <h3 class="settings-group-title">Giao diện</h3>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
-        <div class="field-label" style="margin-bottom:10px">Chế độ hiển thị</div>
+      <h3 class="settings-group-title">Giao diện / Appearance</h3>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px">
+        <div class="field-label" style="margin-bottom:10px">Chế độ hiển thị / Theme</div>
         <div class="seg-group" id="themeSeg">
           <button class="seg-btn${themeVal === 'light' ? ' active' : ''}" data-theme-val="light">Sáng</button>
           <button class="seg-btn${themeVal === 'dark' ? ' active' : ''}" data-theme-val="dark">Tối</button>
@@ -967,11 +945,11 @@ function renderSettings() {
     </div>
 
     <div class="settings-group">
-      <h3 class="settings-group-title">Dữ liệu</h3>
+      <h3 class="settings-group-title">Dữ liệu / Data</h3>
       <button class="settings-item" data-action="export-json">
         <span class="nav-icon">${icon('down', 18)}</span>
         <div class="settings-item-body">
-          <div class="settings-item-title">Sao lưu (JSON)</div>
+          <div class="settings-item-title">Sao lưu JSON</div>
           <div class="settings-item-desc">Tải toàn bộ dữ liệu về máy</div>
         </div>
       </button>
@@ -993,7 +971,7 @@ function renderSettings() {
     </div>
 
     <div class="settings-group">
-      <h3 class="settings-group-title">Vùng nguy hiểm</h3>
+      <h3 class="settings-group-title">Vùng nguy hiểm / Danger zone</h3>
       <button class="settings-item" data-action="clear-all">
         <span class="nav-icon" style="color:var(--red)">${icon('trash', 18)}</span>
         <div class="settings-item-body">
@@ -1004,20 +982,18 @@ function renderSettings() {
     </div>
 
     <div class="settings-group">
-      <h3 class="settings-group-title">Cách tính lãi</h3>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;font-size:13.5px;line-height:1.7;color:var(--text-2)">
-        <div style="color:var(--text);font-weight:600;margin-bottom:6px">Lãi = Gốc × Lãi suất ÷ 100 × Số tháng</div>
-        <div style="font-style:italic">Ví dụ: Cho vay 5.000.000 ₫, lãi suất 20%/tháng, kỳ hạn 1 tháng</div>
-        <div style="margin-top:4px">→ Lãi = 5.000.000 × 20 ÷ 100 × 1 = <b style="color:var(--amber)">1.000.000 ₫</b></div>
-        <div style="margin-top:4px">→ Tổng phải thu = <b style="color:var(--accent)">6.000.000 ₫</b></div>
-        <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);font-size:12.5px;color:var(--text-3)">
-          Dữ liệu lưu trong localStorage của trình duyệt này. Hãy sao lưu định kỳ.
+      <h3 class="settings-group-title">Cách tính lãi / Formula</h3>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;font-size:13.5px;line-height:1.7;color:var(--text-2)">
+        <div style="color:var(--text);font-weight:600;margin-bottom:8px">Lãi = Gốc × Lãi suất ÷ 100 × Số tháng</div>
+        <div style="font-style:italic;font-size:12.5px">Ví dụ: Cho vay 5.000.000 ₫, lãi suất 20%/tháng, kỳ hạn 1 tháng</div>
+        <div style="margin-top:6px">→ Lãi = 5.000.000 × 20 ÷ 100 × 1 = <b style="color:var(--amber)">1.000.000 ₫</b></div>
+        <div style="margin-top:2px">→ Tổng phải thu = <b style="color:var(--accent)">6.000.000 ₫</b></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);font-size:12px;color:var(--text-3)">
+          Dữ liệu lưu trong localStorage của trình duyệt. Hãy sao lưu định kỳ.
         </div>
       </div>
     </div>
   `;
-
-  $('#view').innerHTML = $('#view').innerHTML; // rebuild
 
   $$('#themeSeg [data-theme-val]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1036,7 +1012,6 @@ function renderSettings() {
 function bindViewEvents() {
   const view = $('#view');
 
-  // Row click → contact detail
   $$('[data-contact-id]', view).forEach(el => {
     if (!el.dataset.contactId) return;
     el.addEventListener('click', e => {
@@ -1045,7 +1020,6 @@ function bindViewEvents() {
     });
   });
 
-  // Lend row click → edit
   $$('[data-lend-id]', view).forEach(el => {
     el.addEventListener('click', e => {
       if (e.target.closest('[data-action]')) return;
@@ -1053,25 +1027,12 @@ function bindViewEvents() {
     });
   });
 
-  // Actions
   $$('[data-action]', view).forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
       handleAction(e);
     });
   });
-
-  // Theme seg
-  $$('#themeSeg [data-theme-val]', view).forEach(btn => {
-    btn.addEventListener('click', () => {
-      applyTheme(btn.dataset.themeVal);
-      renderSettings();
-    });
-  });
-
-  // Import
-  const imp = $('#importFile');
-  if (imp) imp.addEventListener('change', handleImportFile);
 }
 
 function handleAction(e) {
@@ -1101,20 +1062,37 @@ function handleAction(e) {
 }
 
 /* ============================================================
-   MODAL
+   MODAL SYSTEM — Fixed backdrop click + scroll
    ============================================================ */
 function openModal(html) {
   const root = $('#modalRoot');
   root.innerHTML = `
-    <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal-backdrop" id="modalBackdrop" role="presentation">
       <div class="modal" role="dialog" aria-modal="true">${html}</div>
     </div>
   `;
   document.body.style.overflow = 'hidden';
 
-  $('#modalBackdrop').addEventListener('click', e => {
-    if (e.target.id === 'modalBackdrop') closeModal();
+  const backdrop = $('#modalBackdrop');
+  let downOnBackdrop = false;
+
+  // Track where pointerdown happened
+  backdrop.addEventListener('pointerdown', e => {
+    downOnBackdrop = (e.target === backdrop);
   });
+
+  // Only close if BOTH pointerdown AND pointerup happened on backdrop
+  backdrop.addEventListener('pointerup', e => {
+    const shouldClose = downOnBackdrop && e.target === backdrop;
+    downOnBackdrop = false;
+    if (shouldClose) closeModal();
+  });
+
+  // Cancel tracking if pointer is cancelled
+  backdrop.addEventListener('pointercancel', () => {
+    downOnBackdrop = false;
+  });
+
   $$('[data-close]', root).forEach(el => el.addEventListener('click', closeModal));
 }
 
@@ -1135,7 +1113,7 @@ function openContactForm(id = null) {
       <h2 class="modal-title">${title}</h2>
       <button class="icon-btn" data-close type="button" aria-label="Đóng">${icon('x', 18)}</button>
     </div>
-    <form id="contactForm">
+    <form id="contactForm" autocomplete="off">
       <div class="modal-body">
         <div class="field">
           <label class="field-label" for="cName">Tên <span class="req">*</span></label>
@@ -1162,7 +1140,7 @@ function openContactForm(id = null) {
     </form>
   `);
 
-  setTimeout(() => $('#cName')?.focus(), 100);
+  setTimeout(() => { try { $('#cName')?.focus(); } catch (_) {} }, 80);
 
   $('#contactForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -1217,7 +1195,7 @@ function openLendForm({ contactId = null, id = null } = {}) {
       <h2 class="modal-title">${isEdit ? 'Sửa khoản vay' : 'Cho vay mới'}</h2>
       <button class="icon-btn" data-close type="button" aria-label="Đóng">${icon('x', 18)}</button>
     </div>
-    <form id="lendForm">
+    <form id="lendForm" autocomplete="off">
       <div class="modal-body">
         <div class="field">
           <label class="field-label" for="lContact">Người vay <span class="req">*</span></label>
@@ -1235,7 +1213,8 @@ function openLendForm({ contactId = null, id = null } = {}) {
           <div class="field">
             <label class="field-label" for="lRate">Lãi suất (%/tháng) <span class="req">*</span></label>
             <input type="number" class="input" id="lRate" min="0" step="0.1"
-                   placeholder="VD: 20" value="${rate ?? ''}" required>
+                   placeholder="VD: 20" value="${rate ?? ''}" required
+                   inputmode="decimal">
           </div>
           <div class="field">
             <label class="field-label" for="lDate">Ngày cho vay</label>
@@ -1315,7 +1294,7 @@ function openLendForm({ contactId = null, id = null } = {}) {
   $('#lDate').addEventListener('change', updatePreview);
 
   updatePreview();
-  setTimeout(() => amtInput?.focus(), 100);
+  setTimeout(() => { try { amtInput?.focus(); } catch (_) {} }, 80);
 
   $('#lendForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -1372,18 +1351,18 @@ function openPaymentForm({ lendId, type }) {
       <h2 class="modal-title">${title}</h2>
       <button class="icon-btn" data-close type="button" aria-label="Đóng">${icon('x', 18)}</button>
     </div>
-    <form id="payForm">
+    <form id="payForm" autocomplete="off">
       <div class="modal-body">
-        <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:18px">
-          <div style="font-size:13px;color:var(--text-2);margin-bottom:6px">${esc(c?.name || '')} · Gốc ${money(lend.amount)}</div>
+        <div style="background:var(--surface-2);border-radius:10px;padding:13px 15px;margin-bottom:16px">
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:8px">${esc(c?.name || '')} · Gốc ${money(lend.amount)}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
-              <div style="font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Lãi còn lại</div>
-              <div style="font-size:15px;font-weight:600;color:var(--amber);margin-top:3px">${money(state.outstandingInterest)}</div>
+              <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Lãi còn lại</div>
+              <div style="font-size:15px;font-weight:600;color:var(--amber);margin-top:3px;font-variant-numeric:tabular-nums">${money(state.outstandingInterest)}</div>
             </div>
             <div>
-              <div style="font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Gốc còn lại</div>
-              <div style="font-size:15px;font-weight:600;color:var(--text);margin-top:3px">${money(state.outstandingPrincipal)}</div>
+              <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Gốc còn lại</div>
+              <div style="font-size:15px;font-weight:600;color:var(--text);margin-top:3px;font-variant-numeric:tabular-nums">${money(state.outstandingPrincipal)}</div>
             </div>
           </div>
         </div>
@@ -1408,7 +1387,7 @@ function openPaymentForm({ lendId, type }) {
 
         ${suggested > 0 ? `
           <button type="button" class="btn ghost sm" id="fullBtn" style="width:100%">
-            Thu hết (${money(suggested)})
+            Thu hết · ${money(suggested)}
           </button>
         ` : ''}
       </div>
@@ -1429,7 +1408,7 @@ function openPaymentForm({ lendId, type }) {
     amtInput.value = nf.format(suggested);
   });
 
-  setTimeout(() => amtInput?.focus(), 100);
+  setTimeout(() => { try { amtInput?.focus(); } catch (_) {} }, 80);
 
   $('#payForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -1481,6 +1460,10 @@ function printContact(id) {
   }).join('');
 
   const win = window.open('', '_blank');
+  if (!win) {
+    toast('Trình duyệt đã chặn cửa sổ in. Vui lòng cho phép popup.', 'error');
+    return;
+  }
   win.document.write(`
     <!DOCTYPE html>
     <html><head><meta charset="UTF-8"><title>Sao kê — ${esc(c.name)}</title>
@@ -1489,20 +1472,20 @@ function printContact(id) {
     <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       * { font-family: 'Lora', Georgia, serif; box-sizing: border-box; }
-      body { padding: 40px; color: #1A1917; max-width: 900px; margin: 0 auto; }
+      body { padding: 40px; color: #1D1D1F; max-width: 900px; margin: 0 auto; }
       h1 { font-size: 24px; font-weight: 600; margin-bottom: 6px; letter-spacing: -.02em; }
-      .sub { color: #6B6860; font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
-      .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px; background: #FAF9F5; border: 1px solid #E9E5D9; border-radius: 12px; margin-bottom: 28px; }
+      .sub { color: #4A4A4F; font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
+      .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 18px; background: #F5F5F7; border: 1px solid #D2D2D7; border-radius: 12px; margin-bottom: 26px; }
       .summary-item { display: flex; flex-direction: column; gap: 4px; }
-      .summary-label { font-size: 11px; color: #6B6860; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-      .summary-value { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+      .summary-label { font-size: 11px; color: #4A4A4F; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+      .summary-value { font-size: 19px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
       .accent { color: #C96442; }
       .amber { color: #A87419; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #E9E5D9; }
-      th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #6B6860; font-weight: 700; }
+      th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #D2D2D7; }
+      th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #4A4A4F; font-weight: 700; }
       td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-      .footer { margin-top: 40px; padding-top: 20px; border-top: 1px dashed #E9E5D9; text-align: center; font-size: 11.5px; color: #A19D91; font-style: italic; }
+      .footer { margin-top: 40px; padding-top: 20px; border-top: 1px dashed #D2D2D7; text-align: center; font-size: 11.5px; color: #86868B; font-style: italic; }
       @media print { body { padding: 20px; } }
     </style></head>
     <body>
@@ -1533,16 +1516,16 @@ function printContact(id) {
           <th class="num">Gốc còn</th><th class="num">Lãi còn</th><th class="num">Tổng</th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>` : '<p style="color:#6B6860">Chưa có khoản vay nào.</p>'}
+      </table>` : '<p style="color:#4A4A4F">Chưa có khoản vay nào.</p>'}
       <div class="footer">Debtor Management</div>
-      <script>setTimeout(() => window.print(), 400);<\/script>
+      <script>setTimeout(() => window.print(), 500);<\/script>
     </body></html>
   `);
   win.document.close();
 }
 
 /* ============================================================
-   CONFIRM & DELETE
+   CONFIRM
    ============================================================ */
 function openConfirm({ title, message, confirmText = 'Xoá', onConfirm, danger = true }) {
   openModal(`
